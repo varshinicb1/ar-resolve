@@ -54,7 +54,7 @@ export function listScopes(db: Db, userId: string) {
   const rows = all<{ tenant_id: string; tenant_name: string; client_id: string; client_name: string; role: Role }>(db,
     `SELECT g.tenant_id, t.name tenant_name, g.client_id, c.name client_name, g.role
      FROM grants g JOIN tenants t USING (tenant_id) JOIN clients c ON c.tenant_id = g.tenant_id AND c.client_id = g.client_id
-     WHERE g.user_id = ? ORDER BY g.tenant_id, g.client_id, g.role`, userId);
+     WHERE g.user_id = ? ORDER BY g.rowid`, userId);
   const map = new Map<string, { tenantId: string; tenantName: string; clientId: string; clientName: string; roles: Role[] }>();
   for (const r of rows) {
     const key = `${r.tenant_id}/${r.client_id}`;
