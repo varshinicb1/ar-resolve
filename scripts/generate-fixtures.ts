@@ -123,6 +123,7 @@ const out = {
   users: [
     { userId: 'u_ana', displayName: 'Ana (AR specialist)', grants: [['tn_demo', 'cl_ortho', 'specialist'], ['tn_demo', 'cl_derm', 'specialist']] },
     { userId: 'u_rui', displayName: 'Rui (reviewer)', grants: [['tn_demo', 'cl_ortho', 'reviewer'], ['tn_demo', 'cl_derm', 'reviewer']] },
+    { userId: 'u_lee', displayName: 'Lee (second reviewer)', grants: [['tn_demo', 'cl_ortho', 'reviewer'], ['tn_demo', 'cl_derm', 'reviewer']] },
     { userId: 'u_sam', displayName: 'Sam (supervisor)', grants: [['tn_demo', 'cl_ortho', 'supervisor'], ['tn_demo', 'cl_derm', 'supervisor']] },
     { userId: 'u_ada', displayName: 'Ada (auditor)', grants: [['tn_demo', 'cl_ortho', 'auditor']] },
     { userId: 'u_bea', displayName: 'Bea (other tenant)', grants: [['tn_other', 'cl_other', 'specialist'], ['tn_other', 'cl_other', 'reviewer']] },

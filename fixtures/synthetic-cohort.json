@@ -60,6 +60,22 @@
       ]
     },
     {
+      "userId": "u_lee",
+      "displayName": "Lee (second reviewer)",
+      "grants": [
+        [
+          "tn_demo",
+          "cl_ortho",
+          "reviewer"
+        ],
+        [
+          "tn_demo",
+          "cl_derm",
+          "reviewer"
+        ]
+      ]
+    },
+    {
       "userId": "u_sam",
       "displayName": "Sam (supervisor)",
       "grants": [
