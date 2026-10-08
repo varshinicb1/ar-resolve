@@ -1,0 +1,78 @@
+{
+  "id": "DED01",
+  "version": 1,
+  "status": "draft",
+  "scope": {
+    "tenant": "synthetic-tenant",
+    "client": "synthetic-client",
+    "payer": "demo-payer",
+    "plan": "simple-in-network-individual",
+    "claimType": "professional"
+  },
+  "effectiveFrom": "2026-01-01",
+  "effectiveThrough": "2026-12-31",
+  "owner": "Business reviewer to be assigned",
+  "approvalRequired": true,
+  "supportedAssumptions": [
+    "Single verified in-network individual deductible",
+    "Accumulator measured before this claim at relevant adjudication",
+    "No reversal or multiple accumulator context"
+  ],
+  "requiredFacts": [
+    "identityVerified",
+    "planSupported",
+    "eobVerified",
+    "allowedCents",
+    "limitCents",
+    "metBeforeCents",
+    "appliedCents",
+    "claimReference",
+    "adjustmentGroup",
+    "secondaryAtDos",
+    "crossoverStatus"
+  ],
+  "actions": [
+    "collect_evidence",
+    "specialist_review",
+    "clarify_allocation",
+    "secondary_review",
+    "patient_responsibility_review",
+    "verify_crossover"
+  ],
+  "prohibitedActions": [
+    "automatic_patient_billing",
+    "automatic_writeoff",
+    "automatic_code_change"
+  ],
+  "sources": [
+    "S07",
+    "S08",
+    "Client policy pending"
+  ],
+  "branches": [
+    {
+      "when": "Identity or required context unavailable",
+      "propose": "collect_evidence"
+    },
+    {
+      "when": "Unsupported plan or conflict",
+      "propose": "specialist_review"
+    },
+    {
+      "when": "Verified simple allocation differs",
+      "propose": "clarify_allocation"
+    },
+    {
+      "when": "Allocation matches and secondary active but crossover unknown",
+      "propose": "verify_crossover"
+    },
+    {
+      "when": "Allocation matches and secondary active, not crossed and posting verified",
+      "propose": "secondary_review"
+    },
+    {
+      "when": "Allocation matches and secondary none",
+      "propose": "patient_responsibility_review"
+    }
+  ]
+}

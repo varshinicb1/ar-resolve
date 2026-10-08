@@ -1,0 +1,36 @@
+{
+  "name": "ar-resolve",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AR Resolve Phase 0: synthetic-data vertical slice for evidence-backed payer follow-up",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "node --disable-warning=ExperimentalWarning --watch server/main.ts",
+    "dev:web": "vite web",
+    "build": "vite build web",
+    "start": "node --disable-warning=ExperimentalWarning server/main.ts",
+    "worker": "AR_WORKER=off node --disable-warning=ExperimentalWarning server/worker.ts",
+    "test": "node --disable-warning=ExperimentalWarning --test tests/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "eval": "node --disable-warning=ExperimentalWarning scripts/evaluate.ts",
+    "demo": "node --disable-warning=ExperimentalWarning scripts/demo.ts",
+    "fixtures": "node scripts/generate-fixtures.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^10.0.6",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4"
+  },
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  }
+}
