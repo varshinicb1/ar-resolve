@@ -139,3 +139,21 @@ details summary { cursor: pointer; color: var(--focus); font-size: 13px; }
 button.link { text-align: left; }
 .metrics .panel + .panel { margin-top: 0; }
 .ops-action { min-width: 180px; }
+
+/* Knowledge base workstream */
+.kb-search { flex: 1; min-width: 220px; }
+.kb-results { list-style: none; margin: 0; padding: 0; }
+.kb-results li { padding: 10px 0; border-bottom: 1px solid var(--border); }
+.kb-results mark, .kb-facts mark { background: #fff2b3; padding: 0 1px; }
+.kb-line { display: grid; grid-template-columns: 110px 1fr auto; gap: 8px; align-items: baseline; padding: 4px 0; font-size: 14px; }
+.kb-caveats { margin: 0; padding-left: 18px; color: var(--muted); }
+.kb-facts { padding-left: 20px; }
+.kb-facts li { margin-bottom: 10px; }
+.kb-cite { display: block; }
+.kb-hardstops li { color: var(--danger); }
+.kb-glossary dt { font-weight: 600; margin-top: 10px; }
+.kb-glossary dd { margin: 2px 0 0; font-size: 14px; }
+.kb-focus { background: var(--review-bg); border-radius: var(--radius); padding: 4px 8px; }
+.kb-explain-form { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+.kb-explain-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+@media (max-width: 760px) { .kb-line { grid-template-columns: 1fr; } }

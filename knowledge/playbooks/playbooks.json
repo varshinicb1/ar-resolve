@@ -1,0 +1,525 @@
+{
+  "header": {
+    "dataset": "kb.playbooks",
+    "title": "Scenario playbooks",
+    "source": "AR Resolution build pack, doc 05",
+    "sourceUrl": "build-pack:docs/05_SCENARIO_RULES_AND_CALL_PLAYBOOKS.md",
+    "method": "Structured transcription of doc 05 tables and call flow; call questions for non-DED01 packs are drafts derived from the doc 05 required-evidence column",
+    "coverage": {
+      "complete": true,
+      "note": "All nine packs in doc 05. Only DED01 has an executable (draft) rule; the others are starting playbooks."
+    },
+    "license": {
+      "holder": "project",
+      "statement": "Internal build pack",
+      "policy": "Internal use."
+    },
+    "retrievedAt": "2026-10-12",
+    "count": 9,
+    "sha256": "aa19bbe72d98b75386d5a2bcc3309b811b19c6f04fae5a9554a9d6e1721a477a"
+  },
+  "entries": [
+    {
+      "reviewStatus": "draft",
+      "source": "build-pack:docs/05_SCENARIO_RULES_AND_CALL_PLAYBOOKS.md",
+      "approvalRequired": "Business owner sign-off before any rule built on this playbook becomes executable (doc 05 rule authoring contract).",
+      "domainOwnerQuestions": [
+        "What is the plan configuration?",
+        "Which source resolves contradictory accumulators?",
+        "Is verbal reprocessing pre-authorized?",
+        "Which evidence is required for timely-filing proof?",
+        "Who can authorize write-offs?",
+        "How are holidays and payer TAT computed?"
+      ],
+      "id": "DED01",
+      "title": "Deductible allocation review",
+      "executable": "draft_rule DED01 v1",
+      "objective": "Verify whether the deductible allocation is supported and prepare an authorized next step.",
+      "requiredEvidence": [
+        "Claim/version/line identity",
+        "Adjustment group and CARC/RARC",
+        "Network tier",
+        "Plan year and deductible type",
+        "Allowed cents",
+        "Applied deductible cents",
+        "Accumulator before this claim at the relevant adjudication point",
+        "EOB",
+        "Posted adjustment",
+        "Secondary status at DOS",
+        "Crossover status",
+        "Processed date",
+        "Payer claim reference",
+        "Call reference if a call occurred",
+        "Payer-specific turnaround and source"
+      ],
+      "permittedProposals": [
+        "Collect evidence",
+        "Obtain adjudication evidence",
+        "Clarify with payer; draft reprocessing request (human authorization for external request)",
+        "Verify posting and crossover; stage secondary review",
+        "Review patient responsibility and protections (no automatic patient billing)",
+        "Verify secondary coverage at DOS",
+        "Specialist review"
+      ],
+      "hardStops": [
+        "Never infer family vs individual accumulators, embedded vs aggregate design, network allocation, reversal handling or timing from a single amount.",
+        "Do not normalize malformed or negative amounts into plausible values.",
+        "No patient responsibility conclusion without EOB/ERA.",
+        "Never assume a claim was not already forwarded to secondary.",
+        "Unknown secondary is not no coverage.",
+        "Do not bill full charge by default for out-of-network or multiple accumulators."
+      ],
+      "branches": [
+        {
+          "condition": "Claim identity or plan context unknown",
+          "proposal": "Collect evidence",
+          "boundary": "No financial action"
+        },
+        {
+          "condition": "EOB/ERA unavailable",
+          "proposal": "Obtain adjudication evidence",
+          "boundary": "No patient responsibility conclusion"
+        },
+        {
+          "condition": "Amounts malformed or negative outside a supported reversal case",
+          "proposal": "Specialist review",
+          "boundary": "Do not normalize into plausible values"
+        },
+        {
+          "condition": "Allocation differs under verified supported-plan assumptions",
+          "proposal": "Clarify with payer; draft reprocessing request",
+          "boundary": "Human authorization for external request"
+        },
+        {
+          "condition": "Allocation consistent and secondary active at DOS",
+          "proposal": "Verify posting and crossover; stage secondary review",
+          "boundary": "Never assume claim was not already forwarded"
+        },
+        {
+          "condition": "Allocation consistent and no secondary found",
+          "proposal": "Review patient responsibility and protections",
+          "boundary": "No automatic patient billing"
+        },
+        {
+          "condition": "Secondary unknown",
+          "proposal": "Verify secondary coverage at DOS",
+          "boundary": "Unknown is not no coverage"
+        },
+        {
+          "condition": "Out-of-network or multiple accumulators",
+          "proposal": "Specialist review",
+          "boundary": "Do not bill full charge by default"
+        }
+      ],
+      "formula": "expected deductible = min(allowed, max(0, deductible limit - amount met before this claim)), integer cents, supported simple plan only; not a universal adjudication formula.",
+      "callQuestions": [
+        "Ask for claim status and processed date.",
+        "Capture allowed amount, actual deductible allocation and adjustment group.",
+        "Clarify plan year, accumulator and network tier used.",
+        "Ask how much had been met before this claim at adjudication, not today’s total; if unavailable mark unknown and request a written EOB.",
+        "If evidence supports an inconsistency, ask the representative to explain the allocation. Verbal reprocessing requests only if the client permits it."
+      ],
+      "noteSpecific": "processed date; service-line adjudication and adjustment group; allowed and cost-sharing amounts; deductible accumulator context and evidence; secondary and crossover status",
+      "callPlan": [
+        "Before dialing: inspect recent electronic status and prior notes; confirm a call is still needed and the destination is approved.",
+        "Identify the authorized billing entity per the approved script; complete provider authentication without exposing unnecessary information.",
+        "Confirm the answers refer to the intended claim version and service lines.",
+        "Ask for claim status and processed date.",
+        "Capture allowed amount, actual deductible allocation and adjustment group.",
+        "Clarify plan year, accumulator and network tier used.",
+        "Ask how much had been met before this claim at adjudication, not today’s total; if unavailable mark unknown and request a written EOB.",
+        "If evidence supports an inconsistency, ask the representative to explain the allocation. Verbal reprocessing requests only if the client permits it.",
+        "Read back monetary values and alphanumeric references.",
+        "Capture claim number and call reference before closing; if no reference is given, record that fact and route to review.",
+        "Record whether a request was actually accepted, request ID, turnaround unit, business-calendar basis and next contact path. A rep agreeing to look is not a confirmed corrected adjudication."
+      ],
+      "noteTemplate": "Status source and timestamp; payer and verified claim version; representative if provided; processed date; service-line adjudication and adjustment group; allowed and cost-sharing amounts; deductible accumulator context and evidence; secondary and crossover status; requested action and whether it was actually accepted; claim/call/request references; payer commitment and follow-up calculation; remaining unknowns; reviewer and rule version; write-back status. Separate facts from recommendations."
+    },
+    {
+      "reviewStatus": "draft",
+      "source": "build-pack:docs/05_SCENARIO_RULES_AND_CALL_PLAYBOOKS.md",
+      "approvalRequired": "Business owner sign-off before any rule built on this playbook becomes executable (doc 05 rule authoring contract).",
+      "domainOwnerQuestions": [
+        "What is the plan configuration?",
+        "Which source resolves contradictory accumulators?",
+        "Is verbal reprocessing pre-authorized?",
+        "Which evidence is required for timely-filing proof?",
+        "Who can authorize write-offs?",
+        "How are holidays and payer TAT computed?"
+      ],
+      "id": "PEND01",
+      "title": "Pending claim status",
+      "executable": null,
+      "objective": "Establish the current payer status and what, if anything, the payer is waiting for.",
+      "requiredEvidence": [
+        "Receipt date",
+        "Current payer status",
+        "Last activity",
+        "Request details"
+      ],
+      "permittedProposals": [
+        "Obtain status or missing request details",
+        "Set follow-up from a verified payer commitment"
+      ],
+      "hardStops": [
+        "No arbitrary wait-days assumption."
+      ],
+      "callQuestions": [
+        "Confirm the payer receipt date for this claim version.",
+        "Ask for the current status and the date of the last activity.",
+        "If the payer is waiting on something, ask exactly what, from whom, and where to send it.",
+        "Ask for the committed turnaround and its calendar basis."
+      ],
+      "noteSpecific": "payer receipt date; current status and last activity; outstanding request details; committed turnaround with source",
+      "callPlan": [
+        "Before dialing: inspect recent electronic status and prior notes; confirm a call is still needed and the destination is approved.",
+        "Identify the authorized billing entity per the approved script; complete provider authentication without exposing unnecessary information.",
+        "Confirm the answers refer to the intended claim version and service lines.",
+        "Confirm the payer receipt date for this claim version.",
+        "Ask for the current status and the date of the last activity.",
+        "If the payer is waiting on something, ask exactly what, from whom, and where to send it.",
+        "Ask for the committed turnaround and its calendar basis.",
+        "Read back monetary values and alphanumeric references.",
+        "Capture claim number and call reference before closing; if no reference is given, record that fact and route to review.",
+        "Record whether a request was actually accepted, request ID, turnaround unit, business-calendar basis and next contact path. A rep agreeing to look is not a confirmed corrected adjudication."
+      ],
+      "noteTemplate": "Status source and timestamp; payer and verified claim version; representative if provided; payer receipt date; current status and last activity; outstanding request details; committed turnaround with source; requested action and whether it was actually accepted; claim/call/request references; payer commitment and follow-up calculation; remaining unknowns; reviewer and rule version; write-back status. Separate facts from recommendations."
+    },
+    {
+      "reviewStatus": "draft",
+      "source": "build-pack:docs/05_SCENARIO_RULES_AND_CALL_PLAYBOOKS.md",
+      "approvalRequired": "Business owner sign-off before any rule built on this playbook becomes executable (doc 05 rule authoring contract).",
+      "domainOwnerQuestions": [
+        "What is the plan configuration?",
+        "Which source resolves contradictory accumulators?",
+        "Is verbal reprocessing pre-authorized?",
+        "Which evidence is required for timely-filing proof?",
+        "Who can authorize write-offs?",
+        "How are holidays and payer TAT computed?"
+      ],
+      "id": "DOC01",
+      "title": "Missing documentation",
+      "executable": null,
+      "objective": "Identify the exact document requested and stage it with a verified attachment manifest.",
+      "requiredEvidence": [
+        "Exact RARC/request",
+        "Required document",
+        "Destination",
+        "Prior upload/fax receipt"
+      ],
+      "permittedProposals": [
+        "Stage requested records with verified attachment manifest"
+      ],
+      "hardStops": [
+        "Wrong patient document.",
+        "Unsupported release of records."
+      ],
+      "callQuestions": [
+        "Confirm the exact document or record the payer needs and the request reference.",
+        "Confirm the destination (address, fax or portal) and any cover-sheet requirement.",
+        "Ask whether any prior submission was received and logged."
+      ],
+      "noteSpecific": "exact request and RARC; required document; destination; prior submission receipts; attachment manifest",
+      "callPlan": [
+        "Before dialing: inspect recent electronic status and prior notes; confirm a call is still needed and the destination is approved.",
+        "Identify the authorized billing entity per the approved script; complete provider authentication without exposing unnecessary information.",
+        "Confirm the answers refer to the intended claim version and service lines.",
+        "Confirm the exact document or record the payer needs and the request reference.",
+        "Confirm the destination (address, fax or portal) and any cover-sheet requirement.",
+        "Ask whether any prior submission was received and logged.",
+        "Read back monetary values and alphanumeric references.",
+        "Capture claim number and call reference before closing; if no reference is given, record that fact and route to review.",
+        "Record whether a request was actually accepted, request ID, turnaround unit, business-calendar basis and next contact path. A rep agreeing to look is not a confirmed corrected adjudication."
+      ],
+      "noteTemplate": "Status source and timestamp; payer and verified claim version; representative if provided; exact request and RARC; required document; destination; prior submission receipts; attachment manifest; requested action and whether it was actually accepted; claim/call/request references; payer commitment and follow-up calculation; remaining unknowns; reviewer and rule version; write-back status. Separate facts from recommendations."
+    },
+    {
+      "reviewStatus": "draft",
+      "source": "build-pack:docs/05_SCENARIO_RULES_AND_CALL_PLAYBOOKS.md",
+      "approvalRequired": "Business owner sign-off before any rule built on this playbook becomes executable (doc 05 rule authoring contract).",
+      "domainOwnerQuestions": [
+        "What is the plan configuration?",
+        "Which source resolves contradictory accumulators?",
+        "Is verbal reprocessing pre-authorized?",
+        "Which evidence is required for timely-filing proof?",
+        "Who can authorize write-offs?",
+        "How are holidays and payer TAT computed?"
+      ],
+      "id": "DUP01",
+      "title": "Duplicate claim",
+      "executable": null,
+      "objective": "Clarify the relationship between the original and the claim denied as duplicate, and review the existing disposition.",
+      "requiredEvidence": [
+        "Original and corrected claim IDs",
+        "Frequency indicator",
+        "Service lines",
+        "Prior payment"
+      ],
+      "permittedProposals": [
+        "Clarify duplicate relationship",
+        "Review existing disposition"
+      ],
+      "hardStops": [
+        "No blind resubmission of an identical claim."
+      ],
+      "callQuestions": [
+        "Ask which prior claim the payer matched as the original and its status.",
+        "Confirm whether the original was paid, denied or is pending, and for which lines.",
+        "If a corrected claim was sent, confirm the frequency indicator the payer received."
+      ],
+      "noteSpecific": "original and duplicate claim IDs; frequency indicator; line-level status of each; prior payment",
+      "callPlan": [
+        "Before dialing: inspect recent electronic status and prior notes; confirm a call is still needed and the destination is approved.",
+        "Identify the authorized billing entity per the approved script; complete provider authentication without exposing unnecessary information.",
+        "Confirm the answers refer to the intended claim version and service lines.",
+        "Ask which prior claim the payer matched as the original and its status.",
+        "Confirm whether the original was paid, denied or is pending, and for which lines.",
+        "If a corrected claim was sent, confirm the frequency indicator the payer received.",
+        "Read back monetary values and alphanumeric references.",
+        "Capture claim number and call reference before closing; if no reference is given, record that fact and route to review.",
+        "Record whether a request was actually accepted, request ID, turnaround unit, business-calendar basis and next contact path. A rep agreeing to look is not a confirmed corrected adjudication."
+      ],
+      "noteTemplate": "Status source and timestamp; payer and verified claim version; representative if provided; original and duplicate claim IDs; frequency indicator; line-level status of each; prior payment; requested action and whether it was actually accepted; claim/call/request references; payer commitment and follow-up calculation; remaining unknowns; reviewer and rule version; write-back status. Separate facts from recommendations."
+    },
+    {
+      "reviewStatus": "draft",
+      "source": "build-pack:docs/05_SCENARIO_RULES_AND_CALL_PLAYBOOKS.md",
+      "approvalRequired": "Business owner sign-off before any rule built on this playbook becomes executable (doc 05 rule authoring contract).",
+      "domainOwnerQuestions": [
+        "What is the plan configuration?",
+        "Which source resolves contradictory accumulators?",
+        "Is verbal reprocessing pre-authorized?",
+        "Which evidence is required for timely-filing proof?",
+        "Who can authorize write-offs?",
+        "How are holidays and payer TAT computed?"
+      ],
+      "id": "COB01",
+      "title": "Coordination of benefits",
+      "executable": null,
+      "objective": "Establish coverage order at the date of service with evidence before any rebilling.",
+      "requiredEvidence": [
+        "DOS coverage",
+        "Primary order evidence",
+        "Prior payer adjudication"
+      ],
+      "permittedProposals": [
+        "Specialist review",
+        "Coverage clarification"
+      ],
+      "hardStops": [
+        "Never change payer order from a generic code alone."
+      ],
+      "callQuestions": [
+        "Ask what other coverage the payer has on file for the date of service and its effective dates.",
+        "Ask which payer they consider primary and the source of that determination.",
+        "Ask whether a prior payer EOB is required and how to submit it."
+      ],
+      "noteSpecific": "coverage on file at DOS; stated primary order and its source; prior payer adjudication",
+      "callPlan": [
+        "Before dialing: inspect recent electronic status and prior notes; confirm a call is still needed and the destination is approved.",
+        "Identify the authorized billing entity per the approved script; complete provider authentication without exposing unnecessary information.",
+        "Confirm the answers refer to the intended claim version and service lines.",
+        "Ask what other coverage the payer has on file for the date of service and its effective dates.",
+        "Ask which payer they consider primary and the source of that determination.",
+        "Ask whether a prior payer EOB is required and how to submit it.",
+        "Read back monetary values and alphanumeric references.",
+        "Capture claim number and call reference before closing; if no reference is given, record that fact and route to review.",
+        "Record whether a request was actually accepted, request ID, turnaround unit, business-calendar basis and next contact path. A rep agreeing to look is not a confirmed corrected adjudication."
+      ],
+      "noteTemplate": "Status source and timestamp; payer and verified claim version; representative if provided; coverage on file at DOS; stated primary order and its source; prior payer adjudication; requested action and whether it was actually accepted; claim/call/request references; payer commitment and follow-up calculation; remaining unknowns; reviewer and rule version; write-back status. Separate facts from recommendations."
+    },
+    {
+      "reviewStatus": "draft",
+      "source": "build-pack:docs/05_SCENARIO_RULES_AND_CALL_PLAYBOOKS.md",
+      "approvalRequired": "Business owner sign-off before any rule built on this playbook becomes executable (doc 05 rule authoring contract).",
+      "domainOwnerQuestions": [
+        "What is the plan configuration?",
+        "Which source resolves contradictory accumulators?",
+        "Is verbal reprocessing pre-authorized?",
+        "Which evidence is required for timely-filing proof?",
+        "Who can authorize write-offs?",
+        "How are holidays and payer TAT computed?"
+      ],
+      "id": "TF01",
+      "title": "Timely filing",
+      "executable": null,
+      "objective": "Assemble proof of timely submission and route to specialist appeal review.",
+      "requiredEvidence": [
+        "Original submission receipt",
+        "Payer receipt",
+        "Applicable filing/appeal rule",
+        "Trigger date"
+      ],
+      "permittedProposals": [
+        "Evidence packet and specialist appeal review"
+      ],
+      "hardStops": [
+        "No automatic write-off when a date looks expired."
+      ],
+      "callQuestions": [
+        "Ask for the payer receipt date of the first submission they have on file.",
+        "Ask which filing limit was applied and from which date it was counted.",
+        "Ask what proof of timely filing the payer accepts and the appeal path and deadline."
+      ],
+      "noteSpecific": "first submission and payer receipt dates; filing limit applied and trigger date; accepted proof; appeal path and deadline",
+      "relatedArticles": [
+        "medicare-timely-filing",
+        "medicare-ffs-appeals"
+      ],
+      "callPlan": [
+        "Before dialing: inspect recent electronic status and prior notes; confirm a call is still needed and the destination is approved.",
+        "Identify the authorized billing entity per the approved script; complete provider authentication without exposing unnecessary information.",
+        "Confirm the answers refer to the intended claim version and service lines.",
+        "Ask for the payer receipt date of the first submission they have on file.",
+        "Ask which filing limit was applied and from which date it was counted.",
+        "Ask what proof of timely filing the payer accepts and the appeal path and deadline.",
+        "Read back monetary values and alphanumeric references.",
+        "Capture claim number and call reference before closing; if no reference is given, record that fact and route to review.",
+        "Record whether a request was actually accepted, request ID, turnaround unit, business-calendar basis and next contact path. A rep agreeing to look is not a confirmed corrected adjudication."
+      ],
+      "noteTemplate": "Status source and timestamp; payer and verified claim version; representative if provided; first submission and payer receipt dates; filing limit applied and trigger date; accepted proof; appeal path and deadline; requested action and whether it was actually accepted; claim/call/request references; payer commitment and follow-up calculation; remaining unknowns; reviewer and rule version; write-back status. Separate facts from recommendations."
+    },
+    {
+      "reviewStatus": "draft",
+      "source": "build-pack:docs/05_SCENARIO_RULES_AND_CALL_PLAYBOOKS.md",
+      "approvalRequired": "Business owner sign-off before any rule built on this playbook becomes executable (doc 05 rule authoring contract).",
+      "domainOwnerQuestions": [
+        "What is the plan configuration?",
+        "Which source resolves contradictory accumulators?",
+        "Is verbal reprocessing pre-authorized?",
+        "Which evidence is required for timely-filing proof?",
+        "Who can authorize write-offs?",
+        "How are holidays and payer TAT computed?"
+      ],
+      "id": "AUTH01",
+      "title": "Authorization absent",
+      "executable": null,
+      "objective": "Verify whether a valid authorization matches the service and draft a clarification.",
+      "requiredEvidence": [
+        "Service",
+        "Authorization requirement",
+        "Authorization number and effective span",
+        "Rendering provider"
+      ],
+      "permittedProposals": [
+        "Verify authorization match",
+        "Draft clarification"
+      ],
+      "hardStops": [
+        "No invented authorization.",
+        "No guarantee of retro-authorization."
+      ],
+      "callQuestions": [
+        "Ask whether an authorization is on file for this member, service and date span, and its number.",
+        "Confirm the rendering provider and service codes the authorization covers.",
+        "Ask the payer’s process for a mismatch and any reconsideration path."
+      ],
+      "noteSpecific": "authorization requirement; authorization number, span and covered services; rendering provider; mismatch found",
+      "relatedArticles": [
+        "cms-0057-f-prior-auth"
+      ],
+      "callPlan": [
+        "Before dialing: inspect recent electronic status and prior notes; confirm a call is still needed and the destination is approved.",
+        "Identify the authorized billing entity per the approved script; complete provider authentication without exposing unnecessary information.",
+        "Confirm the answers refer to the intended claim version and service lines.",
+        "Ask whether an authorization is on file for this member, service and date span, and its number.",
+        "Confirm the rendering provider and service codes the authorization covers.",
+        "Ask the payer’s process for a mismatch and any reconsideration path.",
+        "Read back monetary values and alphanumeric references.",
+        "Capture claim number and call reference before closing; if no reference is given, record that fact and route to review.",
+        "Record whether a request was actually accepted, request ID, turnaround unit, business-calendar basis and next contact path. A rep agreeing to look is not a confirmed corrected adjudication."
+      ],
+      "noteTemplate": "Status source and timestamp; payer and verified claim version; representative if provided; authorization requirement; authorization number, span and covered services; rendering provider; mismatch found; requested action and whether it was actually accepted; claim/call/request references; payer commitment and follow-up calculation; remaining unknowns; reviewer and rule version; write-back status. Separate facts from recommendations."
+    },
+    {
+      "reviewStatus": "draft",
+      "source": "build-pack:docs/05_SCENARIO_RULES_AND_CALL_PLAYBOOKS.md",
+      "approvalRequired": "Business owner sign-off before any rule built on this playbook becomes executable (doc 05 rule authoring contract).",
+      "domainOwnerQuestions": [
+        "What is the plan configuration?",
+        "Which source resolves contradictory accumulators?",
+        "Is verbal reprocessing pre-authorized?",
+        "Which evidence is required for timely-filing proof?",
+        "Who can authorize write-offs?",
+        "How are holidays and payer TAT computed?"
+      ],
+      "id": "MN01",
+      "title": "Medical necessity",
+      "executable": null,
+      "objective": "Route to a qualified clinical or coding reviewer with the policy and records.",
+      "requiredEvidence": [
+        "Denial letter",
+        "Policy version",
+        "Clinical records",
+        "Clinician review"
+      ],
+      "permittedProposals": [
+        "Route to qualified clinical/coding reviewer"
+      ],
+      "hardStops": [
+        "No unsupported clinical rationale."
+      ],
+      "callQuestions": [
+        "Ask which coverage policy and version was applied.",
+        "Ask what documentation would support reconsideration and the appeal deadline."
+      ],
+      "noteSpecific": "denial letter reference; policy and version applied; records on file; reviewer assignment",
+      "callPlan": [
+        "Before dialing: inspect recent electronic status and prior notes; confirm a call is still needed and the destination is approved.",
+        "Identify the authorized billing entity per the approved script; complete provider authentication without exposing unnecessary information.",
+        "Confirm the answers refer to the intended claim version and service lines.",
+        "Ask which coverage policy and version was applied.",
+        "Ask what documentation would support reconsideration and the appeal deadline.",
+        "Read back monetary values and alphanumeric references.",
+        "Capture claim number and call reference before closing; if no reference is given, record that fact and route to review.",
+        "Record whether a request was actually accepted, request ID, turnaround unit, business-calendar basis and next contact path. A rep agreeing to look is not a confirmed corrected adjudication."
+      ],
+      "noteTemplate": "Status source and timestamp; payer and verified claim version; representative if provided; denial letter reference; policy and version applied; records on file; reviewer assignment; requested action and whether it was actually accepted; claim/call/request references; payer commitment and follow-up calculation; remaining unknowns; reviewer and rule version; write-back status. Separate facts from recommendations."
+    },
+    {
+      "reviewStatus": "draft",
+      "source": "build-pack:docs/05_SCENARIO_RULES_AND_CALL_PLAYBOOKS.md",
+      "approvalRequired": "Business owner sign-off before any rule built on this playbook becomes executable (doc 05 rule authoring contract).",
+      "domainOwnerQuestions": [
+        "What is the plan configuration?",
+        "Which source resolves contradictory accumulators?",
+        "Is verbal reprocessing pre-authorized?",
+        "Which evidence is required for timely-filing proof?",
+        "Who can authorize write-offs?",
+        "How are holidays and payer TAT computed?"
+      ],
+      "id": "BUND01",
+      "title": "Bundled service",
+      "executable": null,
+      "objective": "Stage a coding review with the payer edit and line evidence.",
+      "requiredEvidence": [
+        "Claim lines",
+        "Payer edit",
+        "Modifier facts",
+        "Coding review"
+      ],
+      "permittedProposals": [
+        "Stage coding review with evidence"
+      ],
+      "hardStops": [
+        "The agent cannot add modifiers merely to obtain payment."
+      ],
+      "callQuestions": [
+        "Ask which edit or policy bundled the line and into which paid line.",
+        "Ask whether the payer recognizes any modifier exception for this pair, and its documentation requirement."
+      ],
+      "noteSpecific": "bundled line and the line it was bundled into; payer edit; modifier facts; coding reviewer",
+      "callPlan": [
+        "Before dialing: inspect recent electronic status and prior notes; confirm a call is still needed and the destination is approved.",
+        "Identify the authorized billing entity per the approved script; complete provider authentication without exposing unnecessary information.",
+        "Confirm the answers refer to the intended claim version and service lines.",
+        "Ask which edit or policy bundled the line and into which paid line.",
+        "Ask whether the payer recognizes any modifier exception for this pair, and its documentation requirement.",
+        "Read back monetary values and alphanumeric references.",
+        "Capture claim number and call reference before closing; if no reference is given, record that fact and route to review.",
+        "Record whether a request was actually accepted, request ID, turnaround unit, business-calendar basis and next contact path. A rep agreeing to look is not a confirmed corrected adjudication."
+      ],
+      "noteTemplate": "Status source and timestamp; payer and verified claim version; representative if provided; bundled line and the line it was bundled into; payer edit; modifier facts; coding reviewer; requested action and whether it was actually accepted; claim/call/request references; payer commitment and follow-up calculation; remaining unknowns; reviewer and rule version; write-back status. Separate facts from recommendations."
+    }
+  ]
+}

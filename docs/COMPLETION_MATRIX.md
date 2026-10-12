@@ -31,3 +31,23 @@ Status values: **Implemented** (works and tested on synthetic data), **Mocked** 
 | Ops | Observability (traces, cost per account) | Not started | |
 | UI | Call operations, outcomes, integration health screens | Not started | Specified in docs/11 |
 | UI | Accessibility: semantic tables, labels, focus, Escape, 390px no horizontal scroll | Implemented (automated check only) | Manual screen-reader and 200% zoom review Not started |
+
+## Knowledge base workstream (ADR 0010)
+
+| Area | Requirement | Status | Evidence |
+| --- | --- | --- | --- |
+| KB | Sourced, hashed, versioned datasets under `knowledge/` loaded into `kb_*` tables | Implemented | tests/kb.test.ts "loader versions datasets by hash" |
+| KB | CARC index (370 codes, 1 to P7; dates/status; excerpts for routed codes) | Implemented (partial coverage) | knowledge/x12/carc.json; tail after P7 and full descriptions Blocked (X12 licence / page length) |
+| KB | RARC index (416 codes, M1 to N138) | Implemented (partial coverage) | knowledge/x12/rarc.json; N139+ Blocked |
+| KB | Claim adjustment group codes (CO, CR, OA, PI, PR) | Implemented | CMS Blue Button + Manual Ch. 22 §60.1 |
+| KB | 277 claim status categories (56, complete) and claim status codes (543, 0 to 555) | Implemented (status codes partial) | knowledge/x12/claim-status*.json |
+| KB | Regulatory articles with per-fact citations (7, all draft) | Implemented (draft; compliance review Not started) | knowledge/regulatory/articles.json |
+| KB | Structured playbooks for all 9 doc 05 packs | Implemented (draft; business sign-off Not started) | knowledge/playbooks/playbooks.json |
+| KB | Draft CARC/RARC/group routing `routeScenario()`; unknown/multiple go to specialist review | Implemented (draft mapping) | shared/kb/routing.ts; routeScenario test |
+| KB | `explainAdjustment` API + `<CodeExplain>` component | Implemented | /api/kb/explain; web/src/kb.tsx |
+| KB | Full-text search (FTS5, LIKE fallback) | Implemented | KB API test |
+| KB | Glossary (33 terms) | Implemented | knowledge/glossary/glossary.json |
+| KB | Payer directory scoped by tenant/client | Mocked (synthetic payers only) | scope test; real payer data Blocked on contracts |
+| KB | `npm run kb:verify` integrity check | Implemented | kb:verify tamper test |
+| KB | Knowledge UI (search, explain, playbooks, articles, glossary, code lists, payers, sources) | Implemented | Nav "Knowledge"; Playwright smoke at 1400px and 390px |
+| KB | Licensed X12 full-text import | Blocked | Needs an X12 licence |

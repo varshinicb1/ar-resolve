@@ -1,0 +1,458 @@
+{
+  "header": {
+    "dataset": "kb.articles",
+    "title": "Regulatory and process reference articles",
+    "source": "Public CMS, eCFR and X12 pages (per-fact citations)",
+    "sourceUrl": null,
+    "method": "WebFetch of each cited page; summaries written for this product; every key fact carries its own citation",
+    "coverage": {
+      "complete": false,
+      "note": "Draft reference set. Every article needs compliance/business review before it informs a live action."
+    },
+    "license": {
+      "holder": "mixed",
+      "statement": "U.S. Government works plus X12 copyright notices",
+      "policy": "Summaries and short excerpts with citations."
+    },
+    "retrievedAt": "2026-10-12",
+    "count": 7,
+    "sha256": "af0618522adaf20b5291839abff8319af48574c7f7875c0b3a7f3df63d848254"
+  },
+  "entries": [
+    {
+      "reviewStatus": "draft",
+      "id": "medicare-timely-filing",
+      "title": "Medicare timely filing (42 CFR 424.44)",
+      "applicability": [
+        "medicare"
+      ],
+      "tags": [
+        "timely filing",
+        "TF01",
+        "CARC 29"
+      ],
+      "summary": "Medicare Part A/B claims for services on or after 1 January 2010 must be filed within one calendar year of the date of service, with narrow regulatory extensions. Commercial and Medicaid limits differ and must come from the payer contract or state rules.",
+      "facts": [
+        {
+          "text": "For services furnished on or after 1 January 2010, the claim must be filed no later than the close of the period ending 1 calendar year after the date of service.",
+          "citation": {
+            "source": "eCFR 42 CFR 424.44",
+            "url": "https://www.ecfr.gov/current/title-42/chapter-IV/subchapter-B/part-424/subpart-C/section-424.44",
+            "locator": "§424.44(a)(1)",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "The limit is extended when an error or misrepresentation by a CMS employee, Medicare contractor or agent caused the missed deadline.",
+          "citation": {
+            "source": "eCFR 42 CFR 424.44",
+            "url": "https://www.ecfr.gov/current/title-42/chapter-IV/subchapter-B/part-424/subpart-C/section-424.44",
+            "locator": "§424.44(b)(1)",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "Retroactive Medicare entitlement (notice of entitlement effective on or before the date of service) is an extension ground.",
+          "citation": {
+            "source": "eCFR 42 CFR 424.44",
+            "url": "https://www.ecfr.gov/current/title-42/chapter-IV/subchapter-B/part-424/subpart-C/section-424.44",
+            "locator": "§424.44(b)(2)",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "Retroactive disenrollment from a Medicare Advantage plan or PACE organization, with recovery of the plan payment 6 or more months after service, is an extension ground.",
+          "citation": {
+            "source": "eCFR 42 CFR 424.44",
+            "url": "https://www.ecfr.gov/current/title-42/chapter-IV/subchapter-B/part-424/subpart-C/section-424.44",
+            "locator": "§424.44(b)(4)",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "Extensions generally run through the last day of the sixth calendar month after the triggering notice or recovery; no extension under (b)(1) is granted for requests made more than 4 years after the date of service.",
+          "citation": {
+            "source": "eCFR 42 CFR 424.44",
+            "url": "https://www.ecfr.gov/current/title-42/chapter-IV/subchapter-B/part-424/subpart-C/section-424.44",
+            "locator": "§424.44(b)(5)",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "If the deadline falls on a Federal nonworkday, it moves to the next workday.",
+          "citation": {
+            "source": "eCFR 42 CFR 424.44",
+            "url": "https://www.ecfr.gov/current/title-42/chapter-IV/subchapter-B/part-424/subpart-C/section-424.44",
+            "locator": "§424.44(c)",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "eCFR showed title 42 up to date as of 10/08/2026 and no changes to this section after 1/03/2017.",
+          "citation": {
+            "source": "eCFR 42 CFR 424.44",
+            "url": "https://www.ecfr.gov/current/title-42/chapter-IV/subchapter-B/part-424/subpart-C/section-424.44",
+            "locator": "page header and timeline",
+            "retrievedAt": "2026-10-12"
+          }
+        }
+      ],
+      "caveats": [
+        "A date that looks expired is not proof of untimeliness: proof of original submission and payer receipt may change the outcome (build pack doc 05 TF hard stop)."
+      ]
+    },
+    {
+      "reviewStatus": "draft",
+      "id": "medicare-ffs-appeals",
+      "title": "Medicare Part A/B appeal levels and deadlines",
+      "applicability": [
+        "medicare"
+      ],
+      "tags": [
+        "appeal",
+        "redetermination",
+        "reconsideration"
+      ],
+      "summary": "Original Medicare has five appeal levels: MAC redetermination, QIC reconsideration, OMHA (ALJ) decision, Medicare Appeals Council review and federal district court. Filing windows and amount-in-controversy thresholds differ by level and the thresholds change yearly.",
+      "facts": [
+        {
+          "text": "The five levels are redetermination by the MAC, reconsideration by a QIC, a decision by OMHA, review by the Medicare Appeals Council and judicial review in federal district court.",
+          "citation": {
+            "source": "CMS Original Medicare appeals page (last modified 08/25/2026)",
+            "url": "https://www.cms.gov/medicare/appeals-grievances/fee-for-service",
+            "locator": "level list",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "A redetermination must be requested within 120 days from the date of receipt of the initial claim determination; the notice is presumed received 5 calendar days after its date unless there is evidence otherwise.",
+          "citation": {
+            "source": "CMS first-level appeal page (last modified 03/10/2026)",
+            "url": "https://www.cms.gov/medicare/appeals-grievances/fee-for-service/first-level-appeal-redetermination-medicare-contractor",
+            "locator": "filing",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "The MAC generally issues the redetermination decision within 60 days of receiving the request, and no minimum amount in controversy applies at this level.",
+          "citation": {
+            "source": "CMS first-level appeal page",
+            "url": "https://www.cms.gov/medicare/appeals-grievances/fee-for-service/first-level-appeal-redetermination-medicare-contractor",
+            "locator": "decision",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "Per the CMS flowchart: reconsideration within 180 days; OMHA within 60 days with an amount in controversy of at least $200 (CY 2026); Council within 60 days; judicial review within 60 days with at least $1,960 (CY 2026).",
+          "citation": {
+            "source": "CMS FFS appeals flowchart (amounts reflect CY 2026)",
+            "url": "https://www.cms.gov/medicare/appeals-and-grievances/orgmedffsappeals/downloads/flowchart-ffs-appeals-process.pdf",
+            "locator": "flowchart; values matched to levels by position",
+            "retrievedAt": "2026-10-12"
+          }
+        }
+      ],
+      "caveats": [
+        "The flowchart values were matched to levels by layout position; confirm against Medicare Claims Processing Manual Ch. 29 before relying on them.",
+        "Medicare Advantage, Medicaid and commercial appeals follow different rules."
+      ]
+    },
+    {
+      "reviewStatus": "draft",
+      "id": "hipaa-transactions",
+      "title": "Electronic transactions used in AR follow-up (837, 835, 270/271, 276/277)",
+      "applicability": [
+        "medicare",
+        "all"
+      ],
+      "tags": [
+        "837",
+        "835",
+        "270",
+        "271",
+        "276",
+        "277",
+        "EDI"
+      ],
+      "summary": "Claims go out as 837 institutional/professional transactions; adjudication comes back on the 835 remittance advice; eligibility is checked with 270/271; claim status is asked and answered with 276/277. CMS recommends 276/277 over phone and portal lookups for Medicare status checks.",
+      "facts": [
+        {
+          "text": "The 276 is an electronic claim status request and the 277 is the response; providers can get status from MACs without manual queries or calls, and the 277 can post status to patient accounts.",
+          "citation": {
+            "source": "CMS Claim Status Request and Response (last modified 09/10/2024)",
+            "url": "https://www.cms.gov/medicare/coding-billing/electronic-billing/claim-status-request-response",
+            "locator": "overview",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "Medicare claim status is available through IVR telephone systems, MAC internet portals, direct data entry for some providers, and 276/277 transactions, which CMS recommends.",
+          "citation": {
+            "source": "CMS Claim Status Request and Response",
+            "url": "https://www.cms.gov/medicare/coding-billing/electronic-billing/claim-status-request-response",
+            "locator": "channels",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "Medicare contractors must transact the adopted versions of the institutional and professional claim (837).",
+          "citation": {
+            "source": "Medicare Claims Processing Manual Ch. 24 (Rev. 13105, issued 04-10-25)",
+            "url": "https://www.cms.gov/regulations-and-guidance/guidance/manuals/downloads/clm104c24.pdf",
+            "locator": "§40.1",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "The manual describes converting the ASC X12 835 remittance advice into a print document.",
+          "citation": {
+            "source": "Medicare Claims Processing Manual Ch. 24",
+            "url": "https://www.cms.gov/regulations-and-guidance/guidance/manuals/downloads/clm104c24.pdf",
+            "locator": "§40.2",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "CMS supports multiple EDI and non-EDI methods for eligibility data, including ASC X12 270/271.",
+          "citation": {
+            "source": "Medicare Claims Processing Manual Ch. 24",
+            "url": "https://www.cms.gov/regulations-and-guidance/guidance/manuals/downloads/clm104c24.pdf",
+            "locator": "§40.2.2.4(B)",
+            "retrievedAt": "2026-10-12"
+          }
+        }
+      ],
+      "caveats": [
+        "Version, companion-guide and trading-partner details were not captured here; obtain current companion guides before any integration (build pack S14)."
+      ]
+    },
+    {
+      "reviewStatus": "draft",
+      "id": "no-surprises-act-provider",
+      "title": "No Surprises Act: provider requirements (overview)",
+      "applicability": [
+        "commercial",
+        "uninsured"
+      ],
+      "tags": [
+        "patient billing",
+        "balance billing",
+        "good faith estimate"
+      ],
+      "summary": "Providers may not balance bill out-of-network patients in certain situations (emergency services, air ambulance and certain non-emergency services), must disclose those protections, and must give good faith estimates to uninsured or self-pay patients. These protections can block a patient-responsibility action even when a CARC or group code suggests the patient owes.",
+      "facts": [
+        {
+          "text": "Providers, facilities and air ambulance providers are prohibited from balance billing out-of-network patients in certain circumstances, including emergency services, air ambulance services and certain non-emergency services.",
+          "citation": {
+            "source": "CMS No Surprises provider requirements",
+            "url": "https://www.cms.gov/initiatives/no-surprise-billing/overview/policies-resources/provider-requirements-resources",
+            "locator": "balance billing",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "Providers must disclose balance billing protections to patients.",
+          "citation": {
+            "source": "CMS No Surprises provider requirements",
+            "url": "https://www.cms.gov/initiatives/no-surprise-billing/overview/policies-resources/provider-requirements-resources",
+            "locator": "disclosure",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "Providers and facilities must give good faith estimates to uninsured or self-pay individuals, and a patient-provider dispute resolution process exists for those patients.",
+          "citation": {
+            "source": "CMS No Surprises provider requirements",
+            "url": "https://www.cms.gov/initiatives/no-surprise-billing/overview/policies-resources/provider-requirements-resources",
+            "locator": "GFE / PPDR",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "The requirements generally cover group health plans, group or individual coverage and FEHB, and do not apply to people covered by Medicare, Medicaid, IHS, VA Health Care or TRICARE.",
+          "citation": {
+            "source": "CMS No Surprises provider requirements",
+            "url": "https://www.cms.gov/initiatives/no-surprise-billing/overview/policies-resources/provider-requirements-resources",
+            "locator": "scope",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "The summary of provider requirements describes requirements effective 1/1/22.",
+          "citation": {
+            "source": "CMS No Surprises provider requirements",
+            "url": "https://www.cms.gov/initiatives/no-surprise-billing/overview/policies-resources/provider-requirements-resources",
+            "locator": "dates",
+            "retrievedAt": "2026-10-12"
+          }
+        }
+      ],
+      "caveats": [
+        "Notice-and-consent details, dispute thresholds and state law were not captured; legal review is required before any patient billing rule (build pack doc 08)."
+      ]
+    },
+    {
+      "reviewStatus": "draft",
+      "id": "cms-0057-f-prior-auth",
+      "title": "CMS-0057-F prior authorization timelines",
+      "applicability": [
+        "medicare_advantage",
+        "medicaid",
+        "chip",
+        "qhp_ffe"
+      ],
+      "tags": [
+        "prior authorization",
+        "AUTH01",
+        "CARC 197"
+      ],
+      "summary": "The CMS Interoperability and Prior Authorization final rule (fact sheet dated 17 January 2024) sets decision timeframes and denial-reason requirements for impacted payers from 2026 and API requirements from 2027. It does not apply to all commercial plans.",
+      "facts": [
+        {
+          "text": "Impacted payers are Medicare Advantage organizations, state Medicaid and CHIP fee-for-service programs, Medicaid managed care plans, CHIP managed care entities and QHP issuers on the Federally Facilitated Exchanges.",
+          "citation": {
+            "source": "CMS-0057-F fact sheet (17 Jan 2024)",
+            "url": "https://www.cms.gov/newsroom/fact-sheets/cms-interoperability-prior-authorization-final-rule-cms-0057-f",
+            "locator": "impacted payers",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "Decisions are due within 72 hours for expedited (urgent) requests and seven calendar days for standard (non-urgent) requests; QHP issuers on the FFEs are excluded from these timeframes.",
+          "citation": {
+            "source": "CMS-0057-F fact sheet",
+            "url": "https://www.cms.gov/newsroom/fact-sheets/cms-interoperability-prior-authorization-final-rule-cms-0057-f",
+            "locator": "timeframes",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "Beginning in 2026, payers must give a specific reason for denied prior authorization decisions (drugs excluded).",
+          "citation": {
+            "source": "CMS-0057-F fact sheet",
+            "url": "https://www.cms.gov/newsroom/fact-sheets/cms-interoperability-prior-authorization-final-rule-cms-0057-f",
+            "locator": "denial reason",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "Payers must publicly report prior authorization metrics annually, with the initial set due by 31 March 2026.",
+          "citation": {
+            "source": "CMS-0057-F fact sheet",
+            "url": "https://www.cms.gov/newsroom/fact-sheets/cms-interoperability-prior-authorization-final-rule-cms-0057-f",
+            "locator": "metrics",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "A Prior Authorization API must be implemented by 1 January 2027 (dates vary by payer type).",
+          "citation": {
+            "source": "CMS-0057-F fact sheet",
+            "url": "https://www.cms.gov/newsroom/fact-sheets/cms-interoperability-prior-authorization-final-rule-cms-0057-f",
+            "locator": "API",
+            "retrievedAt": "2026-10-12"
+          }
+        }
+      ],
+      "caveats": [
+        "Timeframes govern the payer decision, not retro-authorization; never promise retro-authorization (build pack doc 05 AUTH hard stop)."
+      ]
+    },
+    {
+      "reviewStatus": "draft",
+      "id": "adjustment-group-codes",
+      "title": "Claim adjustment group codes (CO, PR, OA, PI, CR)",
+      "applicability": [
+        "all"
+      ],
+      "tags": [
+        "group code",
+        "CO",
+        "PR",
+        "OA",
+        "PI",
+        "CR"
+      ],
+      "summary": "Every CAS adjustment carries a group code that says who is responsible for the amount. PR may be billed to the patient; CO is a contractual obligation; OA is used when no other group applies; PI is payer-initiated and not patient responsibility in the payer’s opinion; CR corrects a prior claim.",
+      "facts": [
+        {
+          "text": "PR is used when the adjustment represents an amount that may be billed to the patient or insured.",
+          "citation": {
+            "source": "Medicare Claims Processing Manual Ch. 22 (Rev. 2843)",
+            "url": "https://www.cms.gov/Regulations-and-Guidance/Guidance/Manuals/downloads/clm104c22.pdf",
+            "locator": "§60.1",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "CO is used when a contractual agreement between the payer and payee applies.",
+          "citation": {
+            "source": "Medicare Claims Processing Manual Ch. 22",
+            "url": "https://www.cms.gov/Regulations-and-Guidance/Guidance/Manuals/downloads/clm104c22.pdf",
+            "locator": "§60.1",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "OA is used when no other group code applies to the adjustment.",
+          "citation": {
+            "source": "Medicare Claims Processing Manual Ch. 22",
+            "url": "https://www.cms.gov/Regulations-and-Guidance/Guidance/Manuals/downloads/clm104c22.pdf",
+            "locator": "§60.1",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "PI (Payer Initiated Reductions) and CR (Corrections and Reversals) are listed in the CMS Blue Button group-code system.",
+          "citation": {
+            "source": "CMS Blue Button ANSI_GRP_CD",
+            "url": "https://bluebutton.cms.gov/fhir/CodeSystem/ANSI-GRP-CD/",
+            "locator": "code list",
+            "retrievedAt": "2026-10-12"
+          }
+        }
+      ],
+      "caveats": [
+        "A group code alone never authorizes patient billing or a write-off."
+      ]
+    },
+    {
+      "reviewStatus": "draft",
+      "id": "x12-code-list-licensing",
+      "title": "Why the code lists here are partial",
+      "applicability": [
+        "all"
+      ],
+      "tags": [
+        "licensing",
+        "X12",
+        "CARC",
+        "RARC"
+      ],
+      "summary": "X12 maintains CARC, RARC and claim status code lists and states that all X12 work products are copyrighted. This knowledge base keeps code identifiers, published dates and short excerpts needed to route work, and expects full descriptions to come from a licensed import. The public pages were also longer than the fetch tool could read, so the later parts of some lists are missing.",
+      "facts": [
+        {
+          "text": "X12 states that all X12 work products are copyrighted and that use must comply with US copyright law and X12 intellectual property policies.",
+          "citation": {
+            "source": "X12 CARC page",
+            "url": "https://x12.org/codes/claim-adjustment-reason-codes",
+            "locator": "page notice",
+            "retrievedAt": "2026-10-12"
+          }
+        },
+        {
+          "text": "Build pack doc 04: code lists and implementation guides have licensing terms; obtain authorized access rather than bundling copyrighted standards.",
+          "citation": {
+            "source": "Build pack docs/04_DOMAIN_MODEL_AND_STATE_MACHINES.md",
+            "url": "build-pack:docs/04_DOMAIN_MODEL_AND_STATE_MACHINES.md",
+            "locator": "para 2",
+            "retrievedAt": "2026-10-12"
+          }
+        }
+      ],
+      "caveats": [
+        "Codes missing here may still be valid. An unknown code always routes to specialist review."
+      ]
+    }
+  ]
+}
