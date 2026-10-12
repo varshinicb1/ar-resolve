@@ -19,6 +19,12 @@ import { LiveTelephonyAdapter, liveTelephony, deploymentTelephonyReasons, liveTe
 import { LiveExecutionDisabled } from '../server/connectors/executors.ts';
 import { safePublicHttpsUrl } from '../server/connectors/safe-url.ts';
 import { cohort } from '../server/connectors/synthetic-source.ts';
+import { generateKeyPairSync } from 'node:crypto';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
+import { BackendTokenSource, createAssertion, discoverTokenUrl, verifyAssertion } from '../server/connectors/fhir/smart.ts';
+import { FhirReadClient, FhirError } from '../server/connectors/fhir/client.ts';
+import { startMockFhir } from '../server/connectors/fhir/mock-server.ts';
 
 // Tuesday 10:00 in the synthetic payer's timezone, ticking (calls need business hours).
 const BUSINESS = Date.parse('2026-10-13T15:00:00Z');
@@ -411,4 +417,42 @@ test('notifications: pure rules for matching, details, backoff and summary text'
   assert.equal(safePublicHttpsUrl('https://127.0.0.1/x'), null);
   assert.equal(safePublicHttpsUrl('https://hooks.example.test/x'), 'https://hooks.example.test/x');
   assert.ok(deliverDue);
+});
+
+// ---------------------------------------------------------------- FHIR / SMART improvements
+
+test('SMART: discovery, RS384 and ES384 assertions against the mock, alg/key mismatch refused, unsafe bases and redirects refused', async () => {
+  const rsa = generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const ec = generateKeyPairSync('ec', { namedCurve: 'P-384' });
+  const mock = await startMockFhir({ clientId: 'syn-client', kid: 'syn-rsa', publicKey: rsa.publicKey, dataset: 'cl_ortho' });
+  try {
+    const tokenUrl = await discoverTokenUrl(mock.baseUrl, { allowLoopback: true });
+    assert.equal(tokenUrl, mock.tokenUrl);
+    await assert.rejects(discoverTokenUrl(mock.baseUrl), /public https/);
+    const client = new FhirReadClient(mock.baseUrl, new BackendTokenSource({ clientId: 'syn-client', tokenUrl, kid: 'syn-rsa', privateKey: rsa.privateKey, scopes: ['system/ExplanationOfBenefit.rs', 'system/Patient.rs'], alg: 'RS384' }), { allowLoopback: true });
+    const eobs = await client.search('ExplanationOfBenefit', { identifier: 'SYN-C1042' });
+    assert.equal(eobs.length, 1);
+    const pat = await client.read('Patient', 'pat-SYN-1042');
+    assert.deepEqual(Object.keys(pat).sort(), ['id', 'identifier', 'resourceType'], 'patient reduced to a token');
+    // An ES384 assertion presented for an RSA-registered key is refused.
+    const wrong = new BackendTokenSource({ clientId: 'syn-client', tokenUrl, kid: 'syn-rsa', privateKey: ec.privateKey, scopes: ['system/Patient.rs'], alg: 'ES384' });
+    await assert.rejects(wrong.get(), /401/);
+    const seen = new Set<string>();
+    const jwt = createAssertion({ clientId: 'c', tokenUrl: 'https://t.example.test/token', kid: 'k', privateKey: ec.privateKey, scopes: [] });
+    assert.equal(verifyAssertion(jwt, ec.publicKey, { clientId: 'c', tokenUrl: 'https://t.example.test/token', kid: 'k', seenJti: seen }).header.alg, 'ES384');
+    assert.throws(() => verifyAssertion(jwt, ec.publicKey, { clientId: 'c', tokenUrl: 'https://t.example.test/token', kid: 'k', seenJti: seen }), /replayed/);
+    // Unsafe bases.
+    for (const b of ['http://fhir.example.test', 'https://10.1.2.3/fhir', 'https://user:pw@fhir.example.test', 'https://localhost/fhir', 'https://[::1]/fhir']) {
+      assert.throws(() => new FhirReadClient(b, client as never), FhirError, b);
+    }
+  } finally { await mock.close(); }
+  // Redirects are not followed (a redirect could leak the bearer token to another host).
+  const redirector = createServer((_req, res) => { res.writeHead(302, { location: 'https://elsewhere.example.test/' }); res.end(); });
+  await new Promise<void>((r) => redirector.listen(0, '127.0.0.1', r));
+  try {
+    const base = `http://127.0.0.1:${(redirector.address() as AddressInfo).port}`;
+    await assert.rejects(discoverTokenUrl(base, { allowLoopback: true }), /HTTP 302/);
+    const fake = { get: async () => 'synthetic-token' } as unknown as BackendTokenSource;
+    await assert.rejects(new FhirReadClient(base, fake, { allowLoopback: true }).read('Coverage', 'cov-1'), (e: unknown) => e instanceof FhirError && e.status === 302);
+  } finally { await new Promise<void>((r) => redirector.close(() => r())); }
 });

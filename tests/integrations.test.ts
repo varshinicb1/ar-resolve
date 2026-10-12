@@ -227,7 +227,7 @@ test('FHIR R4 mock round trip with SMART backend auth; Patient reduced to a toke
     const other = generateKeyPairSync('ec', { namedCurve: 'P-384' });
     assert.equal((await post(tokenRequestBody({ ...cfg, privateKey: other.privateKey }, createAssertion({ ...cfg, privateKey: other.privateKey })))).status, 401);
 
-    const client = new FhirReadClient(mock.baseUrl, new BackendTokenSource(cfg));
+    const client = new FhirReadClient(mock.baseUrl, new BackendTokenSource(cfg), { allowLoopback: true }); // loopback is an explicit opt-in for the mock (ADR 0070)
     const eobs = await client.search('ExplanationOfBenefit', { identifier: 'SYN-C1042' });
     assert.equal(eobs.length, 1);
     assert.equal((eobs[0].item as any)[0].servicedDate, '2026-06-02');

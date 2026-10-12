@@ -5,7 +5,7 @@ import { type Db, tx } from '../../db/db.ts';
 import { can, requirePerm, type Scope } from '../../services/auth.ts';
 import { getAccountRow } from '../../services/workflow.ts';
 import { type AdapterResult, type ConnectorAdapter, invokeAsync, newRequest, registerAdapter } from '../framework.ts';
-import { BackendTokenSource } from './smart.ts';
+import { BackendTokenSource, discoverTokenUrl } from './smart.ts';
 import { FhirReadClient, type FhirResource } from './client.ts';
 import { startMockFhir, type MockFhir } from './mock-server.ts';
 import type { Extracted } from '../observations.ts';
@@ -82,7 +82,9 @@ export const simFhir: ConnectorAdapter = {
   async executeAsync(ctx, req): Promise<AdapterResult> {
     const started = Date.now();
     const mock = await mockFor(ctx.scope);
-    const client = new FhirReadClient(mock.baseUrl, new BackendTokenSource({ clientId: CLIENT_ID, tokenUrl: mock.tokenUrl, kid: KID, privateKey: keyPair().privateKey, scopes: FHIR_SCOPES }));
+    // Token endpoint from SMART discovery (ADR 0070); loopback is allowed for the local mock only.
+    const tokenUrl = await discoverTokenUrl(mock.baseUrl, { allowLoopback: true });
+    const client = new FhirReadClient(mock.baseUrl, new BackendTokenSource({ clientId: CLIENT_ID, tokenUrl, kid: KID, privateKey: keyPair().privateKey, scopes: FHIR_SCOPES }), { allowLoopback: true });
     const claimReference = String(req.payload.claimReference ?? '');
     const eobs = await client.search('ExplanationOfBenefit', { identifier: claimReference });
     if (!eobs.length) return { outcome: 'not_found', latencyMs: Date.now() - started, normalized: { eobs: [] }, externalRefs: { claimReference } };
