@@ -31,3 +31,25 @@ Status values: **Implemented** (works and tested on synthetic data), **Mocked** 
 | Ops | Observability (traces, cost per account) | Not started | |
 | UI | Call operations, outcomes, integration health screens | Not started | Specified in docs/11 |
 | UI | Accessibility: semantic tables, labels, focus, Escape, 390px no horizontal scroll | Implemented (automated check only) | Manual screen-reader and 200% zoom review Not started |
+
+## E08 Voice: payer call workflow (simulated), ADR 0050
+
+| Area | Requirement | Status | Evidence |
+| --- | --- | --- | --- |
+| FR07 | Call policy gate with reason codes: allowlist, payer business hours, per-payer concurrency and rate limit, pause, identity, action in flight, recent status, call needed, disclosure/recording config | Implemented | tests/voice.test.ts "policy gate refuses…", "…concurrency, rate limit…" |
+| FR07 | Versioned client call policy (immutable versions, supervisor-only, reason required) | Implemented | voice_policy_versions; policy tests |
+| FR07 | Deterministic question plan from missing/conflicting/unverified facts + DED01 playbook; read-back for money and references | Implemented | services/voice/plan.ts; SYN-1045 test |
+| FR07 | Durable call state machine, restart-safe steps, crash rollback, recovery from provider status | Implemented | "restart mid-call…" test |
+| FR07 | Controlled cancellation, pause-driven cancellation, human handoff with packet, specialist end | Implemented | cancellation and handoff tests |
+| FR07 | Simulated payer line (IVR, hold, transfer, rep) with adversarial scripts | Mocked (simulator) | server/connectors/sim-voice.ts; adversarial tests |
+| FR07 | Live telephony adapter (start, cancel, transfer, result, signed callbacks) | Blocked (disabled by design) | live-voice.ts throws LiveExecutionDisabled; provider, BAA, counsel review, customer authorization pending |
+| FR07 | Telephony procurement checklist as data (docs/07, docs/08) | Implemented (all items not started) | TELEPHONY_PROCUREMENT_CHECKLIST |
+| FR07 | Signed, replay-protected provider status callbacks | Implemented (simulated provider) | forged/stale/duplicate callback assertions |
+| FR08 | Deterministic extraction (cents, dates, references, TAT value/unit/basis) bound to transcript turns; read-back marks confirmed vs unconfirmed | Implemented | extraction unit test; SYN-1045 test |
+| FR08 | Verifier: unsupported statements, contradictions → conflicting, missing references never fabricated, wrong-claim quarantine, running totals not used as met-before | Implemented | SYN-1046 and adversarial tests |
+| FR08 | Transcript text cannot change actions or permissions | Implemented | "prompt-injection … has no effect" test |
+| FR08 | Dropped call after acceptance reconciles before re-requesting | Implemented | "call drops after acceptance…" test |
+| Ops | Per-call IVR/hold/talk durations, completeness, cost estimate (labelled assumption) | Implemented (simulated time) | metrics in call detail |
+| UI | Calls page (active/recent, state, payer, hold, outcome, policy, live status, checklist) and account call panel (gate, live state, plan checklist, transcript with extracted values and read-back marks, handoff/cancel) | Implemented | web/src/pages/Calls.tsx, CallPanel.tsx; checked at 1440px and 390px |
+| Voice | Real speech, telephony, payer IVR trees, payer hours and holiday calendars, contracted rates | Blocked | Needs provider, design partner and counsel |
+| Voice | Cross-channel duplicate check in review (verbal request vs outbox) | Not started | ADR 0050 known limitations |

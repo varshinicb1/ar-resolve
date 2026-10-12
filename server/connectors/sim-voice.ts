@@ -38,7 +38,10 @@ export const SIM_PAYER_LINES: Record<string, PayerLine> = {
     label: 'Demo Payer A provider services (simulated line)',
     destination: 'sim:demo-payer/provider-services',
     timezone: 'America/Chicago',
-    businessHours: { days: [1, 2, 3, 4, 5], open: '08:00', close: '17:00' },
+    // SIMULATOR demo switch: AR_SIM_PAYER_ALWAYS_OPEN=1 opens the synthetic line around the clock.
+    businessHours: process.env.AR_SIM_PAYER_ALWAYS_OPEN === '1'
+      ? { days: [1, 2, 3, 4, 5, 6, 7], open: '00:00', close: '24:00' }
+      : { days: [1, 2, 3, 4, 5], open: '08:00', close: '17:00' },
     maxConcurrent: 2,
     maxCallsPerHour: 6,
     holdTimeoutSeconds: 1800,

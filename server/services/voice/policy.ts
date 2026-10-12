@@ -159,7 +159,7 @@ export function evaluateGate(db: Db, scope: Scope, a: AccountRow): GateResult {
   if (line) {
     const bh = withinBusinessHours(line, at);
     add('business_hours', 'Within payer business hours', bh.open, 'OUTSIDE_BUSINESS_HOURS',
-      `Payer local time ${bh.local}; hours ${line.businessHours.open}-${line.businessHours.close} Mon-Fri (synthetic config; holiday calendar not configured)`);
+      `Payer local time ${bh.local}; hours ${line.businessHours.open}-${line.businessHours.close} ${line.businessHours.days.length === 7 ? "daily" : "Mon-Fri"} (synthetic config; holiday calendar not configured)`);
   }
   const pause = activePause(db, scope.tenantId, scope.clientId);
   add('not_paused', 'Automation not paused', !pause, 'AUTOMATION_PAUSED', pause ? `Paused (${pause.scopeKey}): ${pause.reason}` : 'No pause in scope');

@@ -3,6 +3,7 @@ import { api, money, when, errorText, type ApiError } from '../api.ts';
 import { Heading, Overlay, Panel, StateBadge, StatusBadge, toast } from '../ui.tsx';
 import { OUTCOME_LABELS, reasonLabel, type Ded01Outcome } from '../../../shared/rules/ded01.ts';
 import { DED01_V1 } from '../../../shared/rules/catalog.ts';
+import { CallPanel } from './CallPanel.tsx';
 
 interface Fact { key: string; label: string; status: string; value: unknown; unit: string | null; version: number; evidenceId: string | null; locator: any; candidates: { value: unknown; evidenceId: string; sourceClass: string; locator: any; observedAt: string }[]; acceptedStatuses: string[] }
 interface Evidence { evidenceId: string; kind: string; title: string; source: string; content: any; sha256: string; observedAt: string; effectiveAt: string | null; createdBy: string }
@@ -104,7 +105,7 @@ export function Account({ accountId, onChange }: { accountId: string; onChange: 
         <div className="gap8">
           {v.permissions.investigate && <button className="primary" disabled={!!busy || !!v.pause} onClick={() => act('inv', `/api/accounts/${accountId}/investigate`)}>{busy === 'inv' ? 'Investigating…' : a.state === 'ready' ? 'Run investigation' : 'Re-run investigation'}</button>}
           {v.permissions.investigate && a.state !== 'ready' && <button disabled={!!busy || !!v.pause || a.state === 'blocked'} title={a.state === 'blocked' ? 'Calls are blocked until identity is resolved' : undefined}
-            onClick={() => act('call', `/api/accounts/${accountId}/calls/simulate`)}>{busy === 'call' ? 'Calling…' : hasCall ? 'Repeat simulated call' : 'Simulate payer call'}</button>}
+            onClick={() => act('call', `/api/accounts/${accountId}/calls/simulate`)}>{busy === 'call' ? 'Calling…' : hasCall ? 'Repeat pre-scripted call (legacy)' : 'Pre-scripted call (legacy)'}</button>}
           {v.permissions.export && <button onClick={exportPacket}>Export audit packet</button>}
         </div>
       </div>
@@ -144,6 +145,8 @@ export function Account({ accountId, onChange }: { accountId: string; onChange: 
               </table>
             )}
           </Panel>
+
+          <CallPanel accountId={accountId} onChange={load} />
 
           {v.interactions.length > 0 && (
             <Panel title="Payer interactions" id="int-h">
