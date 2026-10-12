@@ -22,6 +22,7 @@ export interface RemittanceLine {
   adjudicatedDate: string; // YYYY-MM-DD
   status: 'original' | 'corrected' | 'reversal';
   allowedCents: number;
+  allowedReported?: boolean; // false when the source reported no allowed amount (an 835 reversal without AMT*B6); allowedCents is then 0 and unused
   paidCents: number; // negative for a reversal (amount taken back)
   adjustments: { group: 'PR' | 'CO' | 'OA' | 'PI' | 'CR'; carc: string; amountCents: number }[];
   payerClaimControl?: string;
@@ -196,7 +197,7 @@ export function reopenAccount(db: Db, actor: Actor, accountId: string, cause: st
     eventType: 'account_reopened', details: { cause, detail, sourceType, sourceId } });
 }
 
-function reconcileLine(db: Db, scope: Scope, batchId: string, l: RemittanceLine, lineHash: string) {
+function reconcileLine(db: Db, scope: Scope, batchId: string, l: RemittanceLine, lineHash: string, pairedCorrection = false) {
   const rule = activeRule(db);
   const ruleRef = `${rule.id}@${rule.version}`;
   const m = matchAccount(db, scope, l.claimReference, l.payerId);
@@ -223,6 +224,13 @@ function reconcileLine(db: Db, scope: Scope, batchId: string, l: RemittanceLine,
   const inWindow = receipts.find((r) => r.receipt_at.slice(0, 10) < l.adjudicatedDate && dayDiff(r.receipt_at.slice(0, 10), l.adjudicatedDate) <= rule.windowDays);
 
   if (l.status === 'reversal') {
+    // A reversal paired with a corrected adjudication of the same line in the same remittance is the
+    // payer's correction mechanism: it is recorded, and the corrected line is judged on its own merits.
+    if (pairedCorrection) {
+      recordLedger(db, scope, { ...base, entryType: 'reversal', amountCents: l.paidCents, deltaCents: l.paidCents, attribution: 'not_attributable',
+        attributionReason: 'Reversal paired with a corrected adjudication of the same line in the same remittance; the corrected line is reconciled separately.' });
+      return { remitLineId, matchStatus: 'matched', outcome: 'reversal_paired', reopened: false };
+    }
     recordLedger(db, scope, { ...base, entryType: 'reversal', amountCents: l.paidCents, deltaCents: l.paidCents, attribution: 'not_attributable',
       attributionReason: 'Reversal of a prior adjudication. Linked to the original line; never deleted.' });
     reopenAccount(db, scope, accountId, 'reversal', `Payer reversed line ${l.lineNumber} on ${l.adjudicatedDate}`, 'remittance_line', remitLineId, l.lineNumber, evidenceId);
@@ -282,30 +290,40 @@ function reconcileLine(db: Db, scope: Scope, batchId: string, l: RemittanceLine,
 
 export function importRemittance(db: Db, scope: Scope, input: Partial<RemittanceInput>) {
   requirePerm(scope, 'import');
+  return tx(db, () => reconcileRemittance(db, scope, input));
+}
+
+export type RemittanceResult = { lineNumber: number; claimReference: string; status: string; matchStatus?: string; outcome?: string | null; reopened?: boolean; accountId?: string | null };
+
+// Validates and reconciles a remittance batch. Callers check permissions and own the transaction
+// (the JSON import route above, and EDI 835 ingestion in server/connectors/remit-835.ts).
+export function reconcileRemittance(db: Db, scope: Scope, input: Partial<RemittanceInput>): { batchId: string; results: RemittanceResult[] } {
   if (input.format !== 'ar-resolve.synthetic-remittance.v1' && input.format !== 'ar-resolve.remittance-lines.v1') throw invalid('Unknown remittance format');
   if (!Array.isArray(input.lines) || !input.lines.length || input.lines.length > 500) throw invalid('lines must contain 1-500 remittance lines');
   const errors = input.lines.flatMap((l, i) => validLine(l, i));
   if (errors.length) throw invalid('Remittance file rejected; nothing was imported', errors);
   const sourceName = String(input.sourceName ?? 'remittance.json').slice(0, 120);
-  return tx(db, () => {
-    const batchId = newId('rb');
-    const results: { lineNumber: number; claimReference: string; status: string; matchStatus?: string; outcome?: string | null; reopened?: boolean }[] = [];
-    for (const l of input.lines!) {
-      const lineHash = sha256(canonicalJson(l));
-      if (one(db, 'SELECT 1 FROM remittance_lines WHERE tenant_id=? AND client_id=? AND line_sha256=?', scope.tenantId, scope.clientId, lineHash)) {
-        results.push({ lineNumber: l.lineNumber, claimReference: l.claimReference, status: 'duplicate' });
-        continue;
-      }
-      const r = reconcileLine(db, scope, batchId, l, lineHash);
-      results.push({ lineNumber: l.lineNumber, claimReference: l.claimReference, status: 'processed', matchStatus: r.matchStatus, outcome: r.outcome, reopened: r.reopened });
+  const lines = input.lines;
+  const batchId = newId('rb');
+  const results: RemittanceResult[] = [];
+  const key = (l: RemittanceLine) => `${l.claimReference}|${l.payerId}|${l.lineNumber}`;
+  const corrected = new Set(lines.filter((l) => l.status === 'corrected').map(key));
+  for (const l of lines) {
+    const lineHash = sha256(canonicalJson(l));
+    if (one(db, 'SELECT 1 FROM remittance_lines WHERE tenant_id=? AND client_id=? AND line_sha256=?', scope.tenantId, scope.clientId, lineHash)) {
+      results.push({ lineNumber: l.lineNumber, claimReference: l.claimReference, status: 'duplicate' });
+      continue;
     }
-    const matched = results.filter((r) => r.matchStatus === 'matched').length;
-    run(db, 'INSERT INTO remittance_batches VALUES (?,?,?,?,?,?,?,?,?,?)', scope.tenantId, scope.clientId, batchId, sourceName, input.format, sha256(canonicalJson(input.lines)),
-      input.lines!.length, matched, scope.userId, nowIso());
-    audit(db, { tenantId: scope.tenantId, clientId: scope.clientId, actorId: scope.userId, objectType: 'remittance_batch', objectId: batchId,
-      eventType: 'remittance_imported', details: { lines: input.lines!.length, matched, duplicates: results.filter((r) => r.status === 'duplicate').length } });
-    return { batchId, results };
-  });
+    const r = reconcileLine(db, scope, batchId, l, lineHash, l.status === 'reversal' && corrected.has(key(l)));
+    const accountId = one<{ account_id: string | null }>(db, 'SELECT account_id FROM remittance_lines WHERE tenant_id=? AND client_id=? AND remit_line_id=?', scope.tenantId, scope.clientId, r.remitLineId)?.account_id ?? null;
+    results.push({ lineNumber: l.lineNumber, claimReference: l.claimReference, status: 'processed', matchStatus: r.matchStatus, outcome: r.outcome, reopened: r.reopened, accountId });
+  }
+  const matched = results.filter((r) => r.matchStatus === 'matched').length;
+  run(db, 'INSERT INTO remittance_batches VALUES (?,?,?,?,?,?,?,?,?,?)', scope.tenantId, scope.clientId, batchId, sourceName, input.format, sha256(canonicalJson(lines)),
+    lines.length, matched, scope.userId, nowIso());
+  audit(db, { tenantId: scope.tenantId, clientId: scope.clientId, actorId: scope.userId, objectType: 'remittance_batch', objectId: batchId,
+    eventType: 'remittance_imported', details: { lines: lines.length, matched, duplicates: results.filter((r) => r.status === 'duplicate').length } });
+  return { batchId, results };
 }
 
 export function importCash(db: Db, scope: Scope, body: { postings?: CashPostingInput[] }) {

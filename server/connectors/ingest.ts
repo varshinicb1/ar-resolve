@@ -15,6 +15,7 @@ import { parseEdi, type MappedTransaction } from './x12/index.ts';
 import { type Extracted, type IntegrationKind, type Opts271, covers, observe271, observe277, observe835 } from './observations.ts';
 import { ensureMappings, mappingRef } from './mappings.ts';
 import { getConfig, newRequest, recordEvent } from './framework.ts';
+import { reconcile835 } from './remit-835.ts';
 
 export type MatchStatus = 'matched' | 'unmatched' | 'ambiguous' | 'identity_mismatch' | 'insufficient_identity' | 'not_applicable';
 
@@ -169,7 +170,7 @@ const MAPPING_FOR: Record<IntegrationKind, string> = { edi_835: 'x12-835-claim',
 
 // Attaches matched items as evidence, resolves facts and, for accounts already under
 // investigation, re-evaluates the rule so stale proposals are superseded. Runs inside the caller's tx.
-export function attachItems(db: Db, scope: Scope, items: PreviewItem[], source: string, fileRef: Record<string, unknown>, options: Opts271, connectorId: string, reevaluate = true) {
+export function attachItems(db: Db, scope: Scope, items: PreviewItem[], source: string, fileRef: Record<string, unknown>, options: Opts271, connectorId: string, reevaluate = true, settled: Map<string, string> = new Map()) {
   const touched = new Map<string, { added: number }>();
   const results: { label: string; accountId: string | null; externalId: string | null; status: MatchStatus; evidenceId: string | null; observations: number }[] = [];
   for (const it of items) {
@@ -195,11 +196,11 @@ export function attachItems(db: Db, scope: Scope, items: PreviewItem[], source: 
     const a = one<AcctRow>(db, 'SELECT account_id, external_id, claim_reference, patient_token, service_date, state, revision FROM accounts WHERE tenant_id=? AND client_id=? AND account_id=?', scope.tenantId, scope.clientId, accountId)!;
     const resolved = resolveFacts(db, scope, accountId);
     const inflight = one(db, `SELECT 1 FROM proposed_actions WHERE tenant_id=? AND client_id=? AND account_id=? AND state IN ('dispatching','uncertain')`, scope.tenantId, scope.clientId, accountId);
-    if (reevaluate && resolved.changed.length && a.state !== 'ready' && !inflight && !paused) {
+    if (reevaluate && resolved.changed.length && a.state !== 'ready' && !inflight && !paused && !settled.has(accountId)) {
       const r = evaluateAndPropose(db, scope, accountId, { trigger: 'integration_evidence', connector: connectorId });
       evaluations[accountId] = { state: r.state, outcome: r.outcome, superseded: r.superseded };
     } else {
-      evaluations[accountId] = { changedFacts: resolved.changed, reevaluated: false, reason: !reevaluate ? 'Caller evaluates' : a.state === 'ready' ? 'Account not yet investigated' : inflight ? 'Action in flight' : paused ? 'Automation paused' : 'No fact changed' };
+      evaluations[accountId] = { changedFacts: resolved.changed, reevaluated: false, reason: !reevaluate ? 'Caller evaluates' : settled.has(accountId) ? settled.get(accountId) : a.state === 'ready' ? 'Account not yet investigated' : inflight ? 'Action in flight' : paused ? 'Automation paused' : 'No fact changed' };
     }
   }
   return { results, evaluations };
@@ -218,10 +219,19 @@ export function ingestEdi(db: Db, scope: Scope, body: { filename?: unknown; cont
     if (!preview.valid) throw new AppError(422, 'edi_invalid', preview.error.message, preview.error);
     const fileId = newId('edi');
     const options = preview.mappingOptions;
-    const attached = attachItems(db, scope, preview.items, `edi:${fileId}`, { fileId, filename, rawSha256, interchangeControl: preview.envelope.control }, options, 'edi_upload');
+    // 835 claim payments are reconciled into the outcome ledger first (ADR 0060), against the facts as they
+    // stood before this file. An account the remittance reopened or resolved is not re-evaluated here:
+    // the reconciliation outcome is the latest word and a human takes it from there.
+    const paymentDates = Object.fromEntries(preview.fileLevel.filter((f) => f.setId === '835').map((f) => [f.control as string, (f.payment as { date: string | null }).date]));
+    const remittance = reconcile835(db, scope, preview.items, preview.envelope.sender, paymentDates, `edi:${fileId} ${filename}`);
+    const settled = new Map<string, string>([
+      ...remittance.resolved.map((id) => [id, 'Resolved by remittance reconciliation'] as [string, string]),
+      ...remittance.reopened.map((id) => [id, 'Reopened by remittance reconciliation'] as [string, string]),
+    ]);
+    const attached = attachItems(db, scope, preview.items, `edi:${fileId}`, { fileId, filename, rawSha256, interchangeControl: preview.envelope.control }, options, 'edi_upload', true, settled);
     const ingested = attached.results.filter((r) => r.evidenceId).length;
     const state = preview.summary.ingestable === 0 ? (preview.items.length ? 'nothing_matched' : 'ingested') : preview.summary.ingestable === preview.items.filter((i) => i.kind).length ? 'ingested' : 'partially_ingested';
-    const report = { summary: preview.summary, results: attached.results, evaluations: attached.evaluations, fileLevel: preview.fileLevel, ingested };
+    const report = { summary: preview.summary, results: attached.results, evaluations: attached.evaluations, fileLevel: preview.fileLevel, ingested, remittance };
     run(db, 'INSERT INTO edi_files VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', scope.tenantId, scope.clientId, fileId, filename, JSON.stringify(preview.transactionSets), rawSha256, raw,
       JSON.stringify(preview.envelope), JSON.stringify(report), state, JSON.stringify({ options, mappings: ['x12-835-claim', 'x12-277-status', 'x12-271-benefits'].map(mappingRef) }), scope.userId, nowIso());
     const req = newRequest(scope, 'ingest_file', { filename, transactionSets: preview.transactionSets });

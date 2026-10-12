@@ -116,7 +116,8 @@ const toConfig = (r: ConfigRow): ConnectorConfig => ({ connectorId: r.connector_
 
 export const DEFAULT_SETTINGS: Record<string, Record<string, unknown>> = {
   sim_clearinghouse: { structuredStatusFirst: false, latencyMs: 120, mappingOptions: { deriveMetBeforeFromRemaining: false, otherPayerMeansSecondary: true } },
-  edi_upload: { mappingOptions: { deriveMetBeforeFromRemaining: false, otherPayerMeansSecondary: true } },
+  // payerCrosswalk: X12 payer identifier (N1*PR N104, else ISA06 sender) -> internal payer id. SYNTHETIC default (ADR 0060).
+  edi_upload: { mappingOptions: { deriveMetBeforeFromRemaining: false, otherPayerMeansSecondary: true }, payerCrosswalk: { DEMOPAYER: 'demo-payer' } },
   sim_fhir: { latencyMs: 40 },
 };
 
@@ -139,6 +140,8 @@ function saveConfig(db: Db, scope: Scope, c: ConnectorConfig) {
 const SETTING_RULES: Record<string, (v: unknown) => boolean> = {
   structuredStatusFirst: (v) => typeof v === 'boolean',
   latencyMs: (v) => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 60_000,
+  payerCrosswalk: (v) => !!v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v as object).length <= 200
+    && Object.entries(v as object).every(([k, x]) => /^[A-Z0-9 -]{1,80}$/.test(k) && typeof x === 'string' && /^[\w-]{1,40}$/.test(x)),
   mappingOptions: (v) => !!v && typeof v === 'object' && Object.entries(v as object).every(([k, x]) => ['deriveMetBeforeFromRemaining', 'otherPayerMeansSecondary'].includes(k) && typeof x === 'boolean'),
 };
 

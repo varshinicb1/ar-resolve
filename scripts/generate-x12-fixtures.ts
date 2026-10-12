@@ -63,6 +63,22 @@ files['835-cl_derm-era.edi'] = era('cl_derm', 100000002);
     providerAdjustments: [{ providerId: 'PRV-SYN-01', fiscalDate: '2026-12-31', items: [['WO', 'SYN-C9999', 5000]] }] });
 }
 
+// ADR 0060: after the clarify_allocation request for SYN-C1042 is accepted (tests run the clock at
+// 2026-11-02), the payer reverses the original adjudication and re-adjudicates with no deductible
+// applied: paid rises from $0.00 to $425.00. Used by tests/remittance-835.test.ts.
+{
+  const orig = remitClaim('cl_ortho', 'SYN-1042', 1)!;
+  const neg = (c: number) => -c;
+  const reversal: RemitClaim = { ...orig, status: '22', chargeCents: neg(orig.chargeCents), paidCents: neg(orig.paidCents), patientRespCents: neg(orig.patientRespCents),
+    lines: orig.lines.map((l) => ({ ...l, chargeCents: neg(l.chargeCents), paidCents: neg(l.paidCents), allowedCents: null,
+      adjustments: l.adjustments.map((a) => ({ group: a.group, triplets: a.triplets.map(([r, amt]) => [r, neg(amt)] as [string, number]) })) })) };
+  const correction: RemitClaim = { ...orig, status: '1', paidCents: 42500, patientRespCents: 0, payerControlNumber: 'DP1042C1',
+    lines: [{ procedure: 'SYNPROC1', chargeCents: orig.chargeCents, paidCents: 42500, serviceDate: '2026-06-02', allowedCents: 42500,
+      adjustments: [{ group: 'CO', triplets: [['45', CONTRACTUAL]] }] }] };
+  files['835-cl_ortho-corrected-after-request.edi'] = build835({ sender: 'DEMOPAYER', receiver: 'SYNTHPROV', control: 100000008, at: new Date('2026-11-12T10:00:00Z'), payer: PAYER, payee: PROVIDER,
+    paymentCents: 42500, paymentDate: '2026-11-12', trace: 'SYNTRACE100000008', productionDate: '2026-11-12', claims: [reversal, correction] });
+}
+
 // 277 claim status responses for three ortho claims.
 {
   const acct = Object.fromEntries(accounts('cl_ortho').map((a) => [a.external_id, a]));
