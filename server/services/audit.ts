@@ -2,6 +2,7 @@
 // event's hash within the same tenant, so a gap or edit breaks verification.
 import { type Db, all, one, run } from '../db/db.ts';
 import { canonicalJson, newId, nowIso, sha256 } from '../util.ts';
+import { analyticsFromAudit } from './analytics.ts';
 
 export interface AuditInput {
   tenantId: string;
@@ -30,6 +31,7 @@ export function audit(db: Db, e: AuditInput): string {
            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
     e.tenantId, e.clientId, eventId, e.actorId, e.objectType, e.objectId, e.accountId ?? null, e.eventType, eventAt,
     canonicalJson(body.details), prevHash, eventHash);
+  analyticsFromAudit(db, e); // product analytics (opaque ids only), same transaction
   return eventId;
 }
 

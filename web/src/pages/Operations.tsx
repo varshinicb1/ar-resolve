@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, errorText, when } from '../api.ts';
 import { Heading, Panel, StateBadge, toast } from '../ui.tsx';
-import { OUTCOME_LABELS, type Ded01Outcome } from '../../../shared/rules/ded01.ts';
+import { outcomeLabel } from '../../../shared/rules/registry.ts';
 import { go } from '../App.tsx';
+import { OpsControls } from './OpsControls.tsx';
 
 interface Ops {
   outbox: { action_id: string; idempotency_key: string; connector: string; state: string; attempts: number; external_reference: string | null; last_error: string | null; updated_at: string; kind: string; account_id: string; external_id: string }[];
@@ -17,8 +18,10 @@ export function Operations({ roles }: { roles: string[] }) {
   const [reason, setReason] = useState('');
   const [err, setErr] = useState('');
   const load = useCallback(() => api.get<Ops>('/api/ops/outbox').then((o) => { setOps(o); setErr(''); }).catch((e) => setErr(errorText(e))), []);
-  useEffect(() => { load(); const t = setInterval(load, 3000); return () => clearInterval(t); }, [load]);
-  if (!roles.includes('supervisor')) return <><Heading eyebrow="Supervisor" title="Operations" /><div className="callout info">Operations controls require the supervisor role in this client.</div></>;
+  const supervisor = roles.includes('supervisor');
+  // Only supervisors may read the outbox; do not poll (and 403) for other roles.
+  useEffect(() => { if (!supervisor) return; load(); const t = setInterval(load, 3000); return () => clearInterval(t); }, [load, supervisor]);
+  if (!supervisor) return <><Heading eyebrow="Supervisor" title="Operations" /><div className="callout info">Operations controls require the supervisor role in this client.</div></>;
   if (err) return <div className="callout danger">{err}</div>;
   if (!ops) return <p className="muted">Loading…</p>;
   const paused = ops.controls.find((c) => c.paused);
@@ -42,7 +45,7 @@ export function Operations({ roles }: { roles: string[] }) {
                 <tbody>{ops.outbox.map((o) => (
                   <tr key={o.action_id}>
                     <td><button className="link" onClick={() => go(`/account/${o.account_id}`)}>{o.external_id}</button></td>
-                    <td className="small ops-action">{OUTCOME_LABELS[o.kind as Ded01Outcome]}<div className="muted">{o.connector}</div></td>
+                    <td className="small ops-action">{outcomeLabel(o.kind)}<div className="muted">{o.connector}</div></td>
                     <td><StateBadge state={o.state} />{o.last_error && <div className="small muted">{o.last_error}</div>}</td>
                     <td className="r num">{o.attempts}</td>
                     <td className="mono">{o.external_reference ?? '—'}</td>
@@ -77,6 +80,7 @@ export function Operations({ roles }: { roles: string[] }) {
           </Panel>
         </div>
       </div>
+      <OpsControls />
     </>
   );
 }

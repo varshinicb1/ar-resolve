@@ -7,17 +7,20 @@
 import { type Db, all, one, run, tx } from '../db/db.ts';
 import { canonicalJson, hashJson, newId, now, nowIso, sha256 } from '../util.ts';
 import { audit } from './audit.ts';
-import { userHasRole } from './auth.ts';
+import { approverStillAuthorized } from './auth.ts';
 import { activePause } from './controls.ts';
-import { ConnectorTimeout, LiveExecutionDisabled, connectorFor, signWebhook, WEBHOOK_SECRET, type SubmitResult } from '../connectors/executors.ts';
+import { afterReceipt, tickFollowups } from './followup.ts';
+import { holdRow, outboxDims } from './holds.ts';
+import { ConnectorTimeout, LiveExecutionDisabled, PreflightFailed, connectorFor, signWebhook, WEBHOOK_SECRET, type SubmitResult } from '../connectors/executors.ts';
 import { AppError } from '../util.ts';
+import { openVerbalRequests } from './verbal-requests.ts';
 
 const LEASE_SECONDS = 30;
 const MAX_ATTEMPTS = 3;
 
-interface OutboxRow {
+export interface OutboxRow {
   tenant_id: string; client_id: string; action_id: string; idempotency_key: string; connector: string; state: string;
-  attempts: number; lease_until: string | null; external_reference: string | null;
+  attempts: number; lease_until: string | null; external_reference: string | null; held_at?: string | null;
 }
 
 interface ActionRow { account_id: string; payload: string; payload_sha256: string; expected_revision: number; state: string; kind: string }
@@ -39,6 +42,7 @@ function setAction(db: Db, o: OutboxRow, state: string) {
 }
 
 function setAccount(db: Db, o: OutboxRow, accountId: string, state: string, followupDue?: string | null) {
+  if (o.connector === 'sim_pm') return; // a note write-back never changes the account workflow state
   run(db, 'UPDATE accounts SET state=?, followup_due=COALESCE(?, followup_due), updated_at=? WHERE tenant_id=? AND client_id=? AND account_id=?',
     state, followupDue ?? null, nowIso(), o.tenant_id, o.client_id, accountId);
 }
@@ -52,15 +56,16 @@ function recordReceipt(db: Db, o: OutboxRow, a: ActionRow, r: SubmitResult, via:
   const confirmed = r.status === 'confirmed';
   setOutbox(db, o, { state: confirmed ? 'confirmed' : 'accepted', external_reference: r.externalReference, receipt_evidence_id: evidenceId, lease_until: null, last_error: null });
   setAction(db, o, confirmed ? 'confirmed' : 'accepted');
-  // A follow-up date comes only from a verified commitment. None exists in Phase 0, so it stays unset.
+  // A follow-up date comes only from a captured commitment or the labelled policy interval (afterReceipt below).
   setAccount(db, o, a.account_id, confirmed ? 'monitoring' : 'awaiting_receipt');
   ev(db, o, a.account_id, 'action_receipt_received', { externalReference: r.externalReference, status: r.status, via, receiptEvidenceId: evidenceId });
+  afterReceipt(db, o, a.account_id, evidenceId); // follow-up from a captured commitment, or labelled policy interval
 }
 
-export interface TickReport { recovered: number; reconciled: number; dispatched: number; uncertain: number; blocked: number; skippedPaused: number }
+export interface TickReport { recovered: number; reconciled: number; dispatched: number; uncertain: number; blocked: number; skippedPaused: number; followupsDue: number }
 
 export function tick(db: Db): TickReport {
-  const rep: TickReport = { recovered: 0, reconciled: 0, dispatched: 0, uncertain: 0, blocked: 0, skippedPaused: 0 };
+  const rep: TickReport = { recovered: 0, reconciled: 0, dispatched: 0, uncertain: 0, blocked: 0, skippedPaused: 0, followupsDue: 0 };
 
   // 1. Crash recovery: a dispatch whose lease expired may or may not have reached the connector.
   for (const o of all<OutboxRow>(db, `SELECT * FROM action_outbox WHERE state='dispatching' AND lease_until < ?`, nowIso())) {
@@ -81,7 +86,8 @@ export function tick(db: Db): TickReport {
 
   // 3. Dispatch pending rows.
   for (const o of all<OutboxRow>(db, `SELECT * FROM action_outbox WHERE state='pending' ORDER BY created_at`)) {
-    if (activePause(db, o.tenant_id, o.client_id)) { rep.skippedPaused++; continue; }
+    const pause = activePause(db, o.tenant_id, o.client_id, outboxDims(db, o));
+    if (pause || o.held_at) { if (pause) holdRow(db, o, pause); rep.skippedPaused++; continue; }
     const claimed = tx(db, () => {
       const a = one<ActionRow>(db, 'SELECT * FROM proposed_actions WHERE tenant_id=? AND client_id=? AND action_id=?', o.tenant_id, o.client_id, o.action_id)!;
       const acct = one<{ revision: number }>(db, 'SELECT revision FROM accounts WHERE tenant_id=? AND client_id=? AND account_id=?', o.tenant_id, o.client_id, a.account_id)!;
@@ -93,7 +99,8 @@ export function tick(db: Db): TickReport {
       if (decision && decision.payload_sha256 !== a.payload_sha256) problems.push('approval hash does not match payload');
       if (hashJson(JSON.parse(a.payload)) !== a.payload_sha256) problems.push('payload integrity check failed');
       if (acct.revision !== a.expected_revision || (decision && decision.account_revision !== acct.revision)) problems.push(`account revision changed (${a.expected_revision} -> ${acct.revision})`);
-      if (decision && !userHasRole(db, decision.actor_id, o.tenant_id, o.client_id, 'reviewer')) problems.push('approver no longer holds the reviewer role');
+      if (decision && !approverStillAuthorized(db, decision.actor_id, o.tenant_id, o.client_id, a.kind)) problems.push('approver no longer holds the reviewer role');
+      if (openVerbalRequests(db, { tenantId: o.tenant_id, clientId: o.client_id }, a.account_id, a.kind).length) problems.push('the payer accepted the same request verbally on a call and it is not reconciled (ADR 0060)');
       if (problems.length) {
         setOutbox(db, o, { state: 'blocked', last_error: problems.join('; ') });
         if (a.state === 'approved') setAction(db, o, 'stale_blocked');
@@ -129,11 +136,15 @@ export function tick(db: Db): TickReport {
         const message = err instanceof LiveExecutionDisabled ? err.message : `Connector error: ${(err as Error).message}`;
         tx(db, () => {
           setOutbox(db, o, { state: 'failed', lease_until: null, last_error: message });
+          if (err instanceof PreflightFailed) setAction(db, o, 'stale_blocked');
           ev(db, o, claimed.account_id, 'dispatch_failed', { message });
         });
       }
     }
   }
+  // 4. Follow-ups whose date has arrived become due or overdue.
+  const fu = tickFollowups(db);
+  rep.followupsDue = fu.due + fu.overdue;
   return rep;
 }
 

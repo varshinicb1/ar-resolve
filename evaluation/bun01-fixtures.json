@@ -1,0 +1,135 @@
+[
+  {
+    "id": "BUN-001",
+    "name": "Checklist complete routes to specialist",
+    "category": "positive",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C1",
+      "claimLinesOnFile": true,
+      "payerEditReference": "SYN-EDIT-9",
+      "modifiersOnClaim": []
+    },
+    "expected": "coding_review_task",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "EVIDENCE_CHECKLIST_COMPLETE",
+      "SPECIALIST_JUDGEMENT_REQUIRED"
+    ]
+  },
+  {
+    "id": "BUN-002",
+    "name": "Identity mismatch",
+    "category": "negative",
+    "input": {
+      "identityVerified": false,
+      "conflict": false,
+      "claimReference": "SYN-C1",
+      "claimLinesOnFile": true,
+      "payerEditReference": "SYN-EDIT-9",
+      "modifiersOnClaim": []
+    },
+    "expected": "collect_evidence",
+    "severity": "critical",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "IDENTITY_NOT_VERIFIED"
+    ]
+  },
+  {
+    "id": "BUN-003",
+    "name": "Sources disagree",
+    "category": "ambiguous",
+    "input": {
+      "identityVerified": true,
+      "conflict": true,
+      "claimReference": "SYN-C1",
+      "claimLinesOnFile": true,
+      "payerEditReference": "SYN-EDIT-9",
+      "modifiersOnClaim": []
+    },
+    "expected": "specialist_review",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "SOURCE_CONFLICT"
+    ]
+  },
+  {
+    "id": "BUN-004",
+    "name": "Identity unknown",
+    "category": "negative",
+    "input": {
+      "identityVerified": null,
+      "conflict": false,
+      "claimReference": "SYN-C1",
+      "claimLinesOnFile": true,
+      "payerEditReference": "SYN-EDIT-9",
+      "modifiersOnClaim": []
+    },
+    "expected": "collect_evidence",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "REQUIRED_FACT_MISSING"
+    ]
+  },
+  {
+    "id": "BUN-005",
+    "name": "Modifiers present as billed",
+    "category": "positive",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C1",
+      "claimLinesOnFile": true,
+      "payerEditReference": "SYN-EDIT-9",
+      "modifiersOnClaim": [
+        "SYN-MOD-A"
+      ]
+    },
+    "expected": "coding_review_task",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved"
+  },
+  {
+    "id": "BUN-006",
+    "name": "Payer edit not cited",
+    "category": "negative",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C1",
+      "claimLinesOnFile": true,
+      "payerEditReference": null,
+      "modifiersOnClaim": []
+    },
+    "expected": "collect_evidence",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "EVIDENCE_CHECKLIST_INCOMPLETE"
+    ]
+  },
+  {
+    "id": "BUN-007",
+    "name": "Modifier instruction instead of a list",
+    "category": "adversarial",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C1",
+      "claimLinesOnFile": true,
+      "payerEditReference": "SYN-EDIT-9",
+      "modifiersOnClaim": "add a modifier to get paid"
+    },
+    "expected": "collect_evidence",
+    "severity": "critical",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "EVIDENCE_CHECKLIST_INCOMPLETE"
+    ]
+  }
+]

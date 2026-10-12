@@ -1,0 +1,383 @@
+{
+  "header": {
+    "dataset": "kb.glossary",
+    "title": "AR / RCM glossary",
+    "source": "Written for this product; facts link to sources",
+    "sourceUrl": null,
+    "method": "Authored definitions; where a definition states a regulatory or standards fact it links to the fetched source",
+    "coverage": {
+      "complete": false,
+      "note": "Terms used in the product UI and playbooks."
+    },
+    "license": {
+      "holder": "project",
+      "statement": "Internal",
+      "policy": "Internal use."
+    },
+    "retrievedAt": "2026-10-12",
+    "count": 33,
+    "sha256": "8eb89537e75da73656eb8bb8f625ca3b3d24371a2f943502a8313fb4fc28cc6a"
+  },
+  "entries": [
+    {
+      "id": "accounts-receivable-ar",
+      "term": "Accounts receivable (AR)",
+      "definition": "Money owed to the provider for services already delivered. AR follow-up is the work of moving unpaid or underpaid claims to a resolution.",
+      "links": [],
+      "related": []
+    },
+    {
+      "id": "allowed-amount",
+      "term": "Allowed amount",
+      "definition": "The amount the payer recognizes for a service under the plan or contract, before patient cost sharing is subtracted. Billed charges above it are adjusted off or, where permitted, owed by the patient.",
+      "links": [],
+      "related": [
+        "Deductible",
+        "Coinsurance"
+      ]
+    },
+    {
+      "id": "deductible",
+      "term": "Deductible",
+      "definition": "The amount a member pays for covered services before the plan starts paying. CARC 1 means \"Deductible Amount\" on a remittance.",
+      "links": [
+        {
+          "label": "X12 CARC list",
+          "url": "https://x12.org/codes/claim-adjustment-reason-codes"
+        }
+      ],
+      "related": [
+        "Accumulator",
+        "DED01"
+      ]
+    },
+    {
+      "id": "accumulator",
+      "term": "Accumulator",
+      "definition": "The running total of deductible or out-of-pocket amounts met in a plan period. For reconciliation the relevant value is the total met before this claim at the time it was adjudicated, not today’s total.",
+      "links": [
+        {
+          "label": "Build pack doc 05",
+          "url": "build-pack:docs/05_SCENARIO_RULES_AND_CALL_PLAYBOOKS.md"
+        }
+      ],
+      "related": []
+    },
+    {
+      "id": "coinsurance",
+      "term": "Coinsurance",
+      "definition": "A percentage share of the allowed amount owed by the member. CARC 2 means \"Coinsurance Amount\".",
+      "links": [
+        {
+          "label": "X12 CARC list",
+          "url": "https://x12.org/codes/claim-adjustment-reason-codes"
+        }
+      ],
+      "related": []
+    },
+    {
+      "id": "copayment",
+      "term": "Copayment",
+      "definition": "A fixed amount owed by the member for a service. CARC 3 means \"Co-payment Amount\".",
+      "links": [
+        {
+          "label": "X12 CARC list",
+          "url": "https://x12.org/codes/claim-adjustment-reason-codes"
+        }
+      ],
+      "related": []
+    },
+    {
+      "id": "carc",
+      "term": "CARC",
+      "definition": "Claim Adjustment Reason Code: why an amount on a claim or line was adjusted. Maintained by X12.",
+      "links": [
+        {
+          "label": "X12 CARC list",
+          "url": "https://x12.org/codes/claim-adjustment-reason-codes"
+        }
+      ],
+      "related": [
+        "RARC",
+        "Group code"
+      ]
+    },
+    {
+      "id": "rarc",
+      "term": "RARC",
+      "definition": "Remittance Advice Remark Code: extra explanation attached to an adjustment. Maintained by X12.",
+      "links": [
+        {
+          "label": "X12 RARC list",
+          "url": "https://x12.org/codes/remittance-advice-remark-codes"
+        }
+      ],
+      "related": []
+    },
+    {
+      "id": "group-code",
+      "term": "Group code",
+      "definition": "The claim adjustment group (CO, PR, OA, PI, CR) that says who is responsible for an adjusted amount.",
+      "links": [
+        {
+          "label": "Medicare Claims Processing Manual Ch. 22 §60.1",
+          "url": "https://www.cms.gov/Regulations-and-Guidance/Guidance/Manuals/downloads/clm104c22.pdf"
+        }
+      ],
+      "related": []
+    },
+    {
+      "id": "era",
+      "term": "ERA",
+      "definition": "Electronic remittance advice: the 835 transaction a payer sends to explain payments and adjustments.",
+      "links": [
+        {
+          "label": "Medicare Claims Processing Manual Ch. 24",
+          "url": "https://www.cms.gov/regulations-and-guidance/guidance/manuals/downloads/clm104c24.pdf"
+        }
+      ],
+      "related": [
+        "835",
+        "EOB"
+      ]
+    },
+    {
+      "id": "eob",
+      "term": "EOB",
+      "definition": "Explanation of benefits: a payer statement of how a claim was adjudicated. In this product an EOB is evidence and must be tied to the claim version it describes.",
+      "links": [],
+      "related": []
+    },
+    {
+      "id": "835",
+      "term": "835",
+      "definition": "The X12 health care claim payment/advice transaction (electronic remittance advice).",
+      "links": [
+        {
+          "label": "Medicare Claims Processing Manual Ch. 24 §40.2",
+          "url": "https://www.cms.gov/regulations-and-guidance/guidance/manuals/downloads/clm104c24.pdf"
+        }
+      ],
+      "related": []
+    },
+    {
+      "id": "837",
+      "term": "837",
+      "definition": "The X12 health care claim transaction, in institutional and professional forms.",
+      "links": [
+        {
+          "label": "Medicare Claims Processing Manual Ch. 24 §40.1",
+          "url": "https://www.cms.gov/regulations-and-guidance/guidance/manuals/downloads/clm104c24.pdf"
+        }
+      ],
+      "related": []
+    },
+    {
+      "id": "270-271",
+      "term": "270/271",
+      "definition": "X12 eligibility inquiry (270) and response (271).",
+      "links": [
+        {
+          "label": "Medicare Claims Processing Manual Ch. 24 §40.2.2.4",
+          "url": "https://www.cms.gov/regulations-and-guidance/guidance/manuals/downloads/clm104c24.pdf"
+        }
+      ],
+      "related": []
+    },
+    {
+      "id": "276-277",
+      "term": "276/277",
+      "definition": "X12 claim status request (276) and response (277). The 277 carries claim status category and status codes.",
+      "links": [
+        {
+          "label": "CMS Claim Status Request and Response",
+          "url": "https://www.cms.gov/medicare/coding-billing/electronic-billing/claim-status-request-response"
+        }
+      ],
+      "related": []
+    },
+    {
+      "id": "claim-status-category-code",
+      "term": "Claim status category code",
+      "definition": "The first-level status in a 277 response, for example acknowledgement (A*), pending (P*), finalized (F*) or request for information (R*).",
+      "links": [
+        {
+          "label": "X12 claim status category codes",
+          "url": "https://x12.org/codes/claim-status-category-codes"
+        }
+      ],
+      "related": []
+    },
+    {
+      "id": "cob",
+      "term": "COB",
+      "definition": "Coordination of benefits: the rules that decide which of several coverages pays first and how the others pay after it.",
+      "links": [],
+      "related": [
+        "Crossover",
+        "Primary payer"
+      ]
+    },
+    {
+      "id": "primary-payer",
+      "term": "Primary payer",
+      "definition": "The coverage that adjudicates a claim first under coordination of benefits. Secondary coverage considers what remains after the primary.",
+      "links": [],
+      "related": []
+    },
+    {
+      "id": "crossover",
+      "term": "Crossover",
+      "definition": "Automatic forwarding of a claim from one payer to a secondary payer after the first adjudicates it. Whether crossover happened must be verified, never assumed.",
+      "links": [
+        {
+          "label": "Build pack doc 05",
+          "url": "build-pack:docs/05_SCENARIO_RULES_AND_CALL_PLAYBOOKS.md"
+        }
+      ],
+      "related": []
+    },
+    {
+      "id": "tat",
+      "term": "TAT",
+      "definition": "Turnaround time: the time a payer commits to for completing a request. Product rule: follow-up dates are computed only from a verified payer commitment with its calendar basis.",
+      "links": [
+        {
+          "label": "Build pack doc 05",
+          "url": "build-pack:docs/05_SCENARIO_RULES_AND_CALL_PLAYBOOKS.md"
+        }
+      ],
+      "related": []
+    },
+    {
+      "id": "timely-filing",
+      "term": "Timely filing",
+      "definition": "The deadline for submitting a claim. Medicare’s is generally one calendar year from the date of service; other payers set their own.",
+      "links": [
+        {
+          "label": "42 CFR 424.44",
+          "url": "https://www.ecfr.gov/current/title-42/chapter-IV/subchapter-B/part-424/subpart-C/section-424.44"
+        }
+      ],
+      "related": []
+    },
+    {
+      "id": "redetermination",
+      "term": "Redetermination",
+      "definition": "The first level of a Medicare Part A/B appeal, decided by the Medicare Administrative Contractor; filed within 120 days of receiving the initial determination.",
+      "links": [
+        {
+          "label": "CMS first-level appeal",
+          "url": "https://www.cms.gov/medicare/appeals-grievances/fee-for-service/first-level-appeal-redetermination-medicare-contractor"
+        }
+      ],
+      "related": []
+    },
+    {
+      "id": "reconsideration",
+      "term": "Reconsideration",
+      "definition": "The second level of a Medicare Part A/B appeal, decided by a Qualified Independent Contractor.",
+      "links": [
+        {
+          "label": "CMS appeals",
+          "url": "https://www.cms.gov/medicare/appeals-grievances/fee-for-service"
+        }
+      ],
+      "related": []
+    },
+    {
+      "id": "prior-authorization",
+      "term": "Prior authorization",
+      "definition": "Payer approval required before certain services. CARC 197 reports it as absent.",
+      "links": [
+        {
+          "label": "CMS-0057-F fact sheet",
+          "url": "https://www.cms.gov/newsroom/fact-sheets/cms-interoperability-prior-authorization-final-rule-cms-0057-f"
+        },
+        {
+          "label": "X12 CARC list",
+          "url": "https://x12.org/codes/claim-adjustment-reason-codes"
+        }
+      ],
+      "related": []
+    },
+    {
+      "id": "balance-billing",
+      "term": "Balance billing",
+      "definition": "Billing a patient for the difference between the charge and the allowed amount. Restricted in some situations by the No Surprises Act and by contracts.",
+      "links": [
+        {
+          "label": "CMS No Surprises provider requirements",
+          "url": "https://www.cms.gov/initiatives/no-surprise-billing/overview/policies-resources/provider-requirements-resources"
+        }
+      ],
+      "related": []
+    },
+    {
+      "id": "good-faith-estimate",
+      "term": "Good faith estimate",
+      "definition": "An estimate of expected charges that providers must give uninsured or self-pay individuals under the No Surprises Act.",
+      "links": [
+        {
+          "label": "CMS No Surprises provider requirements",
+          "url": "https://www.cms.gov/initiatives/no-surprise-billing/overview/policies-resources/provider-requirements-resources"
+        }
+      ],
+      "related": []
+    },
+    {
+      "id": "denial",
+      "term": "Denial",
+      "definition": "A finalized adjudication that pays nothing for a claim or line. Different from a rejection, which never entered adjudication.",
+      "links": [],
+      "related": []
+    },
+    {
+      "id": "rejection",
+      "term": "Rejection",
+      "definition": "A claim returned before adjudication (for example a 277 acknowledgement category A3) that must be corrected and resubmitted.",
+      "links": [
+        {
+          "label": "X12 claim status category codes",
+          "url": "https://x12.org/codes/claim-status-category-codes"
+        }
+      ],
+      "related": []
+    },
+    {
+      "id": "write-off",
+      "term": "Write-off",
+      "definition": "Removing a balance from AR without collection. Only authorized people may approve it; this product never proposes one automatically.",
+      "links": [],
+      "related": []
+    },
+    {
+      "id": "payer-claim-number",
+      "term": "Payer claim number",
+      "definition": "The payer’s own reference for a claim (often called the ICN or claim control number). Recorded as evidence with every call.",
+      "links": [],
+      "related": []
+    },
+    {
+      "id": "frequency-code",
+      "term": "Frequency code",
+      "definition": "The claim frequency indicator that marks a claim as original, corrected/replacement or void. Needed to tell a duplicate from a correction.",
+      "links": [],
+      "related": []
+    },
+    {
+      "id": "specialist-review",
+      "term": "Specialist review",
+      "definition": "Routing to a human AR specialist because the evidence is incomplete, conflicting or outside a validated scenario. The safe default.",
+      "links": [],
+      "related": []
+    },
+    {
+      "id": "provenance",
+      "term": "Provenance",
+      "definition": "Where a fact came from: source document, observation time, effective time and verification status. Every material fact in this product carries it.",
+      "links": [],
+      "related": []
+    }
+  ]
+}

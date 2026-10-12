@@ -6,7 +6,9 @@ import { AppError, conflict, forbidden, hashJson, invalid, newId, notFound, nowI
 import { audit } from './audit.ts';
 import { can, requirePerm, type Scope } from './auth.ts';
 import { loadRule } from './rules.ts';
-import { getAccountRow, ACTIVE_RULE } from './workflow.ts';
+import { getAccountRow } from './workflow.ts';
+import { ruleRunnableForApproval } from './scenario.ts';
+import { isGuardedKind, openVerbalRequests } from './verbal-requests.ts';
 import type { RuleDefinition } from '../../shared/rules/catalog.ts';
 
 export interface ActionRow {
@@ -29,10 +31,12 @@ export function approvalChecks(db: Db, scope: Scope, action: ActionRow): Check[]
   const account = getAccountRow(db, scope, action.account_id);
   const runRow = one<{ inputs: string; created_by: string; rule_id: string; rule_version: number }>(db,
     'SELECT inputs, created_by, rule_id, rule_version FROM workflow_runs WHERE tenant_id=? AND client_id=? AND run_id=?', scope.tenantId, scope.clientId, action.run_id)!;
-  const inputs = JSON.parse(runRow.inputs) as { factRefs: { key: string; used: boolean; status: string }[] };
+  const inputs = JSON.parse(runRow.inputs) as { factRefs: { key: string; used: boolean; status: string; optional?: boolean }[] };
   const def: RuleDefinition = loadRule(db, runRow.rule_id, runRow.rule_version).definition;
   const payload = JSON.parse(action.payload);
-  const unusable = inputs.factRefs.filter((f) => !f.used);
+  // Optional facts (a handled branch when absent, ADR 0020) never block approval.
+  const unusable = inputs.factRefs.filter((f) => !f.used && !f.optional);
+  const runnable = ruleRunnableForApproval(db, scope, runRow.rule_id, runRow.rule_version);
   const checks: Check[] = [
     { id: 'role', label: 'You hold the reviewer role for this client', pass: can(scope, 'review') },
     { id: 'separation', label: 'Reviewer is not the person who generated the proposal', pass: scope.userId !== runRow.created_by,
@@ -46,8 +50,14 @@ export function approvalChecks(db: Db, scope: Scope, action: ActionRow): Check[]
     { id: 'facts', label: 'All required facts are verified or acceptably reported', pass: unusable.length === 0,
       detail: unusable.length ? `Unusable: ${unusable.map((f) => `${f.key} (${f.status})`).join(', ')}` : undefined },
     { id: 'permitted', label: 'Action is permitted by the rule and not prohibited', pass: def.actions.some((a) => a.kind === action.kind && a.risk !== 'abstain') && !def.prohibitedActions.includes(action.kind) },
-    { id: 'rule', label: `Rule ${ACTIVE_RULE.id} is runnable in this environment (synthetic: draft allowed)`, pass: true, detail: 'Assisted-live environments will require an approved rule version' },
+    { id: 'rule', label: `Rule ${runRow.rule_id} v${runRow.rule_version} is runnable in this environment (synthetic: draft allowed)`, pass: runnable.pass, detail: runnable.detail },
   ];
+  // Cross-channel duplicate guard (ADR 0060): a request the payer already accepted verbally is not sent again.
+  if (isGuardedKind(action.kind)) {
+    const open = openVerbalRequests(db, scope, action.account_id, action.kind);
+    checks.push({ id: 'no_open_verbal_request', label: 'No unreconciled verbal request of the same class on a payer call', pass: open.length === 0,
+      detail: open.length ? `Call ${open.map((v) => v.callId).join(', ')}: the payer accepted this request verbally on ${open[0].acceptedAt.slice(0, 10)}; wait for a receipt or adjudication, or release it with a reason` : undefined });
+  }
   return checks;
 }
 
@@ -60,6 +70,7 @@ export function reviewAction(db: Db, scope: Scope, actionId: string, input: Revi
   if (typeof input.payloadSha256 !== 'string' || typeof input.accountRevision !== 'number') throw invalid('payloadSha256 and accountRevision are required');
   return tx(db, () => {
     const action = getAction(db, scope, actionId);
+    if (action.kind === 'note_writeback') throw conflict('wrong_review_path', 'Note write-back has its own permission and review: use /api/writebacks/:id/review');
     const account = getAccountRow(db, scope, action.account_id);
     if (input.payloadSha256 !== action.payload_sha256) throw conflict('payload_mismatch', 'The proposal you reviewed is not the stored proposal. Refresh before deciding.');
     if (input.accountRevision !== account.revision || action.expected_revision !== account.revision) {

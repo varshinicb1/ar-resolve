@@ -1,7 +1,7 @@
 // Read models for the account workspace and the scoped audit export (FR15).
 import { type Db, all, one } from '../db/db.ts';
 import { hashJson, nowIso } from '../util.ts';
-import { DED01_V1 } from '../../shared/rules/catalog.ts';
+import { scenarioView } from './scenario.ts';
 import { audit, accountEvents, verifyChain } from './audit.ts';
 import { can, requirePerm, type Scope } from './auth.ts';
 import { listEvidence } from './evidence.ts';
@@ -9,19 +9,23 @@ import { currentFacts, factHistory } from './facts.ts';
 import { approvalChecks, type ActionRow } from './review.ts';
 import { activePause } from './controls.ts';
 import { getAccountRow, priorityOf } from './workflow.ts';
+import { accountOperationsExport } from './writeback.ts';
 
 function actions(db: Db, scope: Scope, accountId: string) {
-  return all<ActionRow>(db, 'SELECT * FROM proposed_actions WHERE tenant_id=? AND client_id=? AND account_id=? ORDER BY created_at DESC, rowid DESC', scope.tenantId, scope.clientId, accountId);
+  return all<ActionRow>(db, "SELECT * FROM proposed_actions WHERE tenant_id=? AND client_id=? AND account_id=? AND kind <> 'note_writeback' ORDER BY created_at DESC, rowid DESC", scope.tenantId, scope.clientId, accountId);
 }
 
 export function accountView(db: Db, scope: Scope, accountId: string) {
   requirePerm(scope, 'view');
   const a = getAccountRow(db, scope, accountId);
   const facts = currentFacts(db, scope, accountId);
-  const factList = DED01_V1.requiredFacts.map((rf) => {
+  // Facts shown are the selected pack's required facts (DED01 for Phase 0 accounts).
+  const scenario = scenarioView(db, scope, a, facts);
+  const factList = scenario.factRule.definition.requiredFacts.map((rf) => {
     const f = facts.get(rf.key);
     return { key: rf.key, label: rf.label, acceptedStatuses: rf.acceptedStatuses, status: f?.status ?? 'missing', value: f?.value ?? null,
-      unit: f?.unit ?? null, version: f?.version ?? 0, evidenceId: f?.evidenceId ?? null, locator: f?.locator ?? null, candidates: f?.candidates ?? [] };
+      unit: f?.unit ?? null, version: f?.version ?? 0, evidenceId: f?.evidenceId ?? null, locator: f?.locator ?? null, candidates: f?.candidates ?? [],
+      ...(rf.optional ? { optional: true } : {}) };
   });
   const latestRun = one<{ run_id: string; state: string; result: string; inputs: string; account_revision: number; rule_id: string; rule_version: number; rule_sha256: string; created_by: string; created_at: string }>(db,
     'SELECT * FROM workflow_runs WHERE tenant_id=? AND client_id=? AND account_id=? ORDER BY created_at DESC, rowid DESC LIMIT 1', scope.tenantId, scope.clientId, accountId);
@@ -40,7 +44,9 @@ export function accountView(db: Db, scope: Scope, accountId: string) {
   const interactions = all<{ interaction_id: string; channel: string; destination: string; state: string; transitions: string; transcript_evidence_id: string | null; call_reference: string | null; mocked: number; created_at: string }>(db,
     'SELECT * FROM interactions WHERE tenant_id=? AND client_id=? AND account_id=? ORDER BY created_at', scope.tenantId, scope.clientId, accountId)
     .map((i) => ({ interactionId: i.interaction_id, channel: i.channel, destination: i.destination, state: i.state, transitions: JSON.parse(i.transitions),
-      transcriptEvidenceId: i.transcript_evidence_id, callReference: i.call_reference, mocked: !!i.mocked, createdAt: i.created_at }));
+      transcriptEvidenceId: i.transcript_evidence_id, callReference: i.call_reference, mocked: !!i.mocked, createdAt: i.created_at,
+      // ADR 0060: calls run by the voice engine against the simulated line, vs the legacy pre-scripted transcript.
+      engineCallId: one<{ call_id: string }>(db, 'SELECT call_id FROM voice_calls WHERE tenant_id=? AND client_id=? AND interaction_id=?', scope.tenantId, scope.clientId, i.interaction_id)?.call_id ?? null }));
   return {
     account: {
       accountId: a.account_id, externalId: a.external_id, payerId: a.payer_id, providerId: a.provider_id, patientToken: a.patient_token,
@@ -56,6 +62,7 @@ export function accountView(db: Db, scope: Scope, accountId: string) {
     interactions,
     timeline: accountEvents(db, scope.tenantId, scope.clientId, accountId),
     pause: activePause(db, scope.tenantId, scope.clientId),
+    scenario: { current: scenario.current, lastRun: scenario.lastRun, pack: scenario.pack },
     permissions: { investigate: can(scope, 'investigate'), correct: can(scope, 'correct_fact'), review: can(scope, 'review'), operate: can(scope, 'operate'), export: can(scope, 'audit_export') },
   };
 }
@@ -84,6 +91,7 @@ export function auditExport(db: Db, scope: Scope, accountId: string) {
     interactions: view.interactions,
     events: accountEvents(db, scope.tenantId, scope.clientId, accountId),
     auditChain: verifyChain(db, scope.tenantId),
+    operations: accountOperationsExport(db, scope, accountId), // write-backs, commitments, follow-ups, outcome ledger
   };
   return { ...packet, packetSha256: hashJson(packet) };
 }

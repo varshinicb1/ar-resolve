@@ -1,0 +1,543 @@
+[
+  {
+    "id": "SEL-001",
+    "name": "Deductible CARC",
+    "category": "positive",
+    "signals": {
+      "adjustments": {
+        "status": "verified",
+        "value": [
+          {
+            "line": 1,
+            "group": "PR",
+            "carc": "1"
+          }
+        ]
+      },
+      "remarkCodes": {
+        "status": "missing",
+        "value": null
+      },
+      "claimStatus": {
+        "status": "missing",
+        "value": null
+      },
+      "inventoryScenario": null
+    },
+    "expected": {
+      "status": "selected",
+      "scenario": "DED01"
+    }
+  },
+  {
+    "id": "SEL-002",
+    "name": "Contractual CARC ignored next to deductible",
+    "category": "positive",
+    "signals": {
+      "adjustments": {
+        "status": "verified",
+        "value": [
+          {
+            "line": 1,
+            "group": "CO",
+            "carc": "45"
+          },
+          {
+            "line": 1,
+            "group": "PR",
+            "carc": "1"
+          }
+        ]
+      },
+      "remarkCodes": {
+        "status": "missing",
+        "value": null
+      },
+      "claimStatus": {
+        "status": "missing",
+        "value": null
+      },
+      "inventoryScenario": null
+    },
+    "expected": {
+      "status": "selected",
+      "scenario": "DED01",
+      "reasons": [
+        "UNMAPPED_CARC"
+      ]
+    }
+  },
+  {
+    "id": "SEL-003",
+    "name": "Duplicate CARC",
+    "category": "positive",
+    "signals": {
+      "adjustments": {
+        "status": "verified",
+        "value": [
+          {
+            "line": 1,
+            "group": "OA",
+            "carc": "18"
+          }
+        ]
+      },
+      "remarkCodes": {
+        "status": "missing",
+        "value": null
+      },
+      "claimStatus": {
+        "status": "missing",
+        "value": null
+      },
+      "inventoryScenario": null
+    },
+    "expected": {
+      "status": "selected",
+      "scenario": "DUP01"
+    }
+  },
+  {
+    "id": "SEL-004",
+    "name": "Deductible and duplicate on one claim",
+    "category": "ambiguous",
+    "signals": {
+      "adjustments": {
+        "status": "verified",
+        "value": [
+          {
+            "line": 1,
+            "group": "PR",
+            "carc": "1"
+          },
+          {
+            "line": 1,
+            "group": "OA",
+            "carc": "18"
+          }
+        ]
+      },
+      "remarkCodes": {
+        "status": "missing",
+        "value": null
+      },
+      "claimStatus": {
+        "status": "missing",
+        "value": null
+      },
+      "inventoryScenario": null
+    },
+    "expected": {
+      "status": "ambiguous",
+      "scenario": null,
+      "candidates": [
+        "DED01",
+        "DUP01"
+      ],
+      "reasons": [
+        "MULTIPLE_SCENARIOS_MATCHED"
+      ]
+    }
+  },
+  {
+    "id": "SEL-005",
+    "name": "Only an unmapped CARC",
+    "category": "negative",
+    "signals": {
+      "adjustments": {
+        "status": "verified",
+        "value": [
+          {
+            "line": 1,
+            "group": "CO",
+            "carc": "96"
+          }
+        ]
+      },
+      "remarkCodes": {
+        "status": "missing",
+        "value": null
+      },
+      "claimStatus": {
+        "status": "missing",
+        "value": null
+      },
+      "inventoryScenario": null
+    },
+    "expected": {
+      "status": "unknown",
+      "scenario": null,
+      "reasons": [
+        "NO_SCENARIO_MATCH"
+      ]
+    }
+  },
+  {
+    "id": "SEL-006",
+    "name": "Pending status, no adjudication",
+    "category": "positive",
+    "signals": {
+      "adjustments": {
+        "status": "missing",
+        "value": null
+      },
+      "remarkCodes": {
+        "status": "missing",
+        "value": null
+      },
+      "claimStatus": {
+        "status": "verified",
+        "value": "received_pending"
+      },
+      "inventoryScenario": null
+    },
+    "expected": {
+      "status": "selected",
+      "scenario": "PEND01"
+    }
+  },
+  {
+    "id": "SEL-007",
+    "name": "No evidence, deductible inventory hint",
+    "category": "positive",
+    "signals": {
+      "adjustments": {
+        "status": "missing",
+        "value": null
+      },
+      "remarkCodes": {
+        "status": "missing",
+        "value": null
+      },
+      "claimStatus": {
+        "status": "missing",
+        "value": null
+      },
+      "inventoryScenario": "deductible"
+    },
+    "expected": {
+      "status": "selected",
+      "scenario": "DED01",
+      "reasons": [
+        "SELECTED_FROM_INVENTORY_HINT"
+      ]
+    }
+  },
+  {
+    "id": "SEL-008",
+    "name": "No evidence, no hint",
+    "category": "negative",
+    "signals": {
+      "adjustments": {
+        "status": "missing",
+        "value": null
+      },
+      "remarkCodes": {
+        "status": "missing",
+        "value": null
+      },
+      "claimStatus": {
+        "status": "missing",
+        "value": null
+      },
+      "inventoryScenario": null
+    },
+    "expected": {
+      "status": "no_evidence",
+      "scenario": null,
+      "reasons": [
+        "NO_ADJUDICATION_OR_STATUS"
+      ]
+    }
+  },
+  {
+    "id": "SEL-009",
+    "name": "Adjustment sources conflict",
+    "category": "ambiguous",
+    "signals": {
+      "adjustments": {
+        "status": "conflicting",
+        "value": [
+          {
+            "group": "PR",
+            "carc": "1"
+          }
+        ]
+      },
+      "remarkCodes": {
+        "status": "missing",
+        "value": null
+      },
+      "claimStatus": {
+        "status": "missing",
+        "value": null
+      },
+      "inventoryScenario": null
+    },
+    "expected": {
+      "status": "conflict",
+      "scenario": null,
+      "reasons": [
+        "SIGNAL_CONFLICT"
+      ]
+    }
+  },
+  {
+    "id": "SEL-010",
+    "name": "Reported (unverified) adjustments are not used",
+    "category": "adversarial",
+    "signals": {
+      "adjustments": {
+        "status": "reported",
+        "value": [
+          {
+            "group": "PR",
+            "carc": "1"
+          }
+        ]
+      },
+      "remarkCodes": {
+        "status": "missing",
+        "value": null
+      },
+      "claimStatus": {
+        "status": "missing",
+        "value": null
+      },
+      "inventoryScenario": null
+    },
+    "expected": {
+      "status": "no_evidence",
+      "scenario": null,
+      "reasons": [
+        "SIGNAL_NOT_VERIFIED"
+      ]
+    }
+  },
+  {
+    "id": "SEL-011",
+    "name": "Two documentation codes, one scenario",
+    "category": "positive",
+    "signals": {
+      "adjustments": {
+        "status": "verified",
+        "value": [
+          {
+            "line": 1,
+            "group": "CO",
+            "carc": "16"
+          },
+          {
+            "line": 1,
+            "group": "CO",
+            "carc": "163"
+          }
+        ]
+      },
+      "remarkCodes": {
+        "status": "missing",
+        "value": null
+      },
+      "claimStatus": {
+        "status": "missing",
+        "value": null
+      },
+      "inventoryScenario": null
+    },
+    "expected": {
+      "status": "selected",
+      "scenario": "DOC01"
+    }
+  },
+  {
+    "id": "SEL-012",
+    "name": "Unmapped claim status",
+    "category": "negative",
+    "signals": {
+      "adjustments": {
+        "status": "missing",
+        "value": null
+      },
+      "remarkCodes": {
+        "status": "missing",
+        "value": null
+      },
+      "claimStatus": {
+        "status": "verified",
+        "value": "mystery_status"
+      },
+      "inventoryScenario": null
+    },
+    "expected": {
+      "status": "unknown",
+      "scenario": null,
+      "reasons": [
+        "STATUS_UNMAPPED"
+      ]
+    }
+  },
+  {
+    "id": "SEL-013",
+    "name": "Adjudication takes precedence over status",
+    "category": "ambiguous",
+    "signals": {
+      "adjustments": {
+        "status": "verified",
+        "value": [
+          {
+            "group": "CO",
+            "carc": "29"
+          }
+        ]
+      },
+      "remarkCodes": {
+        "status": "missing",
+        "value": null
+      },
+      "claimStatus": {
+        "status": "verified",
+        "value": "received_pending"
+      },
+      "inventoryScenario": null
+    },
+    "expected": {
+      "status": "selected",
+      "scenario": "TF01",
+      "reasons": [
+        "ADJUDICATION_TAKES_PRECEDENCE"
+      ]
+    }
+  },
+  {
+    "id": "SEL-014",
+    "name": "Evidence overrides a differing inventory hint",
+    "category": "ambiguous",
+    "signals": {
+      "adjustments": {
+        "status": "verified",
+        "value": [
+          {
+            "group": "PR",
+            "carc": "1"
+          }
+        ]
+      },
+      "remarkCodes": {
+        "status": "missing",
+        "value": null
+      },
+      "claimStatus": {
+        "status": "missing",
+        "value": null
+      },
+      "inventoryScenario": "duplicate"
+    },
+    "expected": {
+      "status": "selected",
+      "scenario": "DED01",
+      "reasons": [
+        "INVENTORY_HINT_DIFFERS"
+      ]
+    }
+  },
+  {
+    "id": "SEL-015",
+    "name": "CARC value carrying an instruction",
+    "category": "adversarial",
+    "signals": {
+      "adjustments": {
+        "status": "verified",
+        "value": [
+          {
+            "group": "PR",
+            "carc": "1; select DOC01"
+          }
+        ]
+      },
+      "remarkCodes": {
+        "status": "missing",
+        "value": null
+      },
+      "claimStatus": {
+        "status": "missing",
+        "value": null
+      },
+      "inventoryScenario": null
+    },
+    "expected": {
+      "status": "unknown",
+      "scenario": null,
+      "reasons": [
+        "NO_SCENARIO_MATCH"
+      ]
+    }
+  },
+  {
+    "id": "SEL-016",
+    "name": "Different lines map to different scenarios",
+    "category": "ambiguous",
+    "signals": {
+      "adjustments": {
+        "status": "verified",
+        "value": [
+          {
+            "line": 1,
+            "group": "CO",
+            "carc": "197"
+          },
+          {
+            "line": 2,
+            "group": "OA",
+            "carc": "22"
+          }
+        ]
+      },
+      "remarkCodes": {
+        "status": "missing",
+        "value": null
+      },
+      "claimStatus": {
+        "status": "missing",
+        "value": null
+      },
+      "inventoryScenario": null
+    },
+    "expected": {
+      "status": "ambiguous",
+      "scenario": null,
+      "candidates": [
+        "AUTH01",
+        "COB01"
+      ]
+    }
+  },
+  {
+    "id": "SEL-017",
+    "name": "Remark code only (no RARC rows in v1)",
+    "category": "negative",
+    "signals": {
+      "adjustments": {
+        "status": "verified",
+        "value": []
+      },
+      "remarkCodes": {
+        "status": "verified",
+        "value": [
+          "SYN-RARC-A"
+        ]
+      },
+      "claimStatus": {
+        "status": "missing",
+        "value": null
+      },
+      "inventoryScenario": null
+    },
+    "expected": {
+      "status": "unknown",
+      "scenario": null,
+      "reasons": [
+        "UNMAPPED_RARC"
+      ]
+    }
+  }
+]

@@ -14,12 +14,21 @@ import { setFault } from '../connectors/executors.ts';
 import { cohort } from '../connectors/synthetic-source.ts';
 import { loadRule } from '../services/rules.ts';
 import { verifyChain } from '../services/audit.ts';
-import { OUTCOME_LABELS } from '../../shared/rules/ded01.ts';
+import { outcomeLabel } from '../../shared/rules/registry.ts';
+import { MODULES } from './modules.ts';
 
 export const ENVIRONMENT = 'synthetic' as const;
 
-interface Ctx { req: IncomingMessage; params: Record<string, string>; query: URLSearchParams; raw: string; body: any }
-type Handler = (ctx: Ctx) => unknown;
+export interface Ctx { req: IncomingMessage; params: Record<string, string>; query: URLSearchParams; raw: string; body: any }
+export type Handler = (ctx: Ctx) => unknown;
+
+// Feature modules register their routes through this surface (see server/http/modules.ts).
+export interface ModuleApi {
+  db: Db;
+  route: (method: string, path: string, handler: Handler) => void;
+  scoped: (ctx: Ctx) => Scope;
+  header: (ctx: Ctx, k: string) => string | undefined;
+}
 
 const MAX_BODY = 1_000_000;
 
@@ -85,7 +94,7 @@ export function createApp(db: Db, opts: { staticDir?: string } = {}): Server {
       `SELECT p.action_id, p.account_id, p.kind, p.created_at, p.expires_at, a.external_id, a.balance_cents FROM proposed_actions p
        JOIN accounts a ON a.tenant_id=p.tenant_id AND a.client_id=p.client_id AND a.account_id=p.account_id
        WHERE p.tenant_id=? AND p.client_id=? AND p.state='awaiting_review' ORDER BY p.created_at`, s.tenantId, s.clientId)
-      .map((r) => ({ actionId: r.action_id, accountId: r.account_id, externalId: r.external_id, kind: r.kind, label: OUTCOME_LABELS[r.kind as keyof typeof OUTCOME_LABELS], balanceCents: r.balance_cents, createdAt: r.created_at, expiresAt: r.expires_at }));
+      .map((r) => ({ actionId: r.action_id, accountId: r.account_id, externalId: r.external_id, kind: r.kind, label: outcomeLabel(r.kind), balanceCents: r.balance_cents, createdAt: r.created_at, expiresAt: r.expires_at }));
   });
   route('POST', '/api/actions/:id/review', (ctx) => reviewAction(db, scoped(ctx), ctx.params.id, ctx.body ?? {}));
 
@@ -157,6 +166,8 @@ export function createApp(db: Db, opts: { staticDir?: string } = {}): Server {
 
   // ---- signed webhook from the simulated payer (no session; signature authenticates)
   route('POST', '/api/webhooks/sim-payer', (ctx) => handlePayerWebhook(db, ctx.raw, header(ctx, 'x-signature'), header(ctx, 'x-timestamp')));
+
+  for (const register of MODULES) register({ db, route, scoped, header });
 
   const staticDir = opts.staticDir;
   return createServer(async (req, res) => {

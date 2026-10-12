@@ -1,6 +1,5 @@
 // Versioned rule definitions as data. Branch logic is a reviewed deterministic
 // function (logicModule) — rule editors never supply executable strings.
-import type { Ded01Outcome } from './ded01.ts';
 
 export type FactStatus = 'verified' | 'reported' | 'inferred' | 'missing' | 'conflicting' | 'stale';
 
@@ -8,12 +7,15 @@ export interface RequiredFact {
   key: string;
   label: string;
   acceptedStatuses: FactStatus[];
+  // A fact whose absence is a handled branch of the logic (for example "ask the
+  // payer for it"). Optional facts never block approval when missing.
+  optional?: boolean;
 }
 
-export type RiskClass = 'internal_work_item' | 'information_request' | 'reprocessing_request';
+export type RiskClass = 'internal_work_item' | 'information_request' | 'reprocessing_request' | 'document_submission';
 
 export interface ActionSpec {
-  kind: Ded01Outcome;
+  kind: string;
   risk: RiskClass | 'abstain';
   connector: 'sim_payer' | 'internal_worklist' | null;
   approveLabel: string | null;
@@ -23,7 +25,7 @@ export interface RuleDefinition {
   id: string;
   version: number;
   status: 'draft' | 'approved' | 'retired';
-  logicModule: 'ded01.v1';
+  logicModule: string;
   scope: { tenant: string; client: string; payer: string; plan: string; claimType: string };
   effectiveFrom: string;
   effectiveThrough: string;
@@ -35,6 +37,11 @@ export interface RuleDefinition {
   sources: string[];
   followUpBusinessDays: number | null;
   followUpSource: string;
+  // Optional data fields used by packs after DED01 (absent on DED01 v1 so its hash is unchanged).
+  params?: Record<string, number>;
+  outcomeLabels?: Record<string, string>;
+  hardStops?: string[];
+  noteTemplate?: string[];
 }
 
 export const DED01_V1: RuleDefinition = {

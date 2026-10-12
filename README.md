@@ -1,6 +1,8 @@
-# AR Resolve: Phase 0 synthetic vertical slice
+# AR Resolve: synthetic platform build
 
-An evidence-backed payer follow-up workspace for US medical AR teams. This build implements Phase 0 from the AR Resolution build pack: synthetic data, mocked adapters, and a disabled live executor. It is not production software. It holds no PHI and makes no real calls or payer submissions.
+An evidence-backed payer follow-up workspace for US medical AR (accounts receivable) teams. It investigates an open claim balance, resolves every material fact from a source with provenance, selects a versioned scenario pack, proposes the next action, and sends nothing until a human reviewer approves the exact payload. Approved actions go through an idempotent outbox to (simulated) connectors. Calls, remittances, follow-ups and outcomes feed back into the same evidence, fact and audit pipeline.
+
+This is not production software. Every account, payer, amount, transcript and file is synthetic. It holds no PHI. Every live integration is a typed adapter that throws `LiveExecutionDisabled`. Every rule, routing map, playbook and attribution method is a draft that needs business sign-off.
 
 ## Run it
 
@@ -12,84 +14,115 @@ npm run build          # build the web UI
 npm start              # API + UI + embedded outbox worker on http://localhost:8080
 ```
 
-Development with hot reload: `npm run dev` (API on 8080, UI on http://localhost:5173).
-
-Other commands:
+Development with hot reload: `npm run dev` (API on 8080, UI on http://localhost:5173). Data lives in `data/ar-resolve.db` (override with `AR_DB`); delete it to start fresh. The simulated payer line keeps synthetic business hours (America/Chicago, weekdays); set `AR_SIM_PAYER_ALWAYS_OPEN=1` to call it at any time during a demo.
 
 | Command | What it does |
 | --- | --- |
-| `npm test` | 21 tests: rule fixtures, scope isolation, roles, identity conflict, missing evidence, contradictory sources, stale review, double approval, duplicate dispatch, timeout after success, crash and restart, authority re-check, pause, forged webhooks, audit immutability |
-| `npm run demo` | Runs the Phase 0 acceptance journey end to end through the API, including a restart |
-| `npm run eval` | Regenerates `evaluation/REPORT.md` (40/40 fixtures, 12/12 cohort) |
+| `npm test` | 117 tests in 17 suites over the real HTTP API (see below) |
+| `npm run demo` | The Phase 0 acceptance journey end to end through the API, including a restart |
+| `npm run eval` | Regenerates `evaluation/REPORT.md`: DED01 40/40, all packs 141/141, selection 17/17, 3-client cohort 35/35 |
+| `npm run kb:verify` | Knowledge base integrity: provenance, hashes, duplicates, citations, and that every code the routing and the selection map use exists and is active |
 | `npm run worker` | Standalone outbox worker (start the API with `AR_WORKER=off` to use it) |
 | `npm run typecheck` | TypeScript check |
 
-Data lives in `data/ar-resolve.db` (override with `AR_DB`). Delete it to start fresh.
+Test suites: workflow 5, review/execution 11, scope 2, rule engine 3, scenario packs 6, rule studio 4, knowledge base 6, routing consistency 3, X12 7, integrations 9, 835 remittance 4, follow-ups 5, outcomes 4, write-back 5, controls/analytics 4, voice 16, verbal-request guard 3.
 
-## Demo walkthrough (about 5 minutes)
+## What each page does
+
+| Page | Who | What |
+| --- | --- | --- |
+| Work queue | everyone | Saved views, explained priority, server pagination and scoped search over accounts |
+| Account | everyone (actions by role) | Identity, facts with status and source (click a badge to open the exact field), **adjustment codes explained** from the knowledge base, evidence with hashes, scenario selection, the rule's arithmetic and proposal, review prerequisites, the call panel, verbal payer requests, payer interactions, follow-up, write-back, outcome ledger and timeline |
+| Reviews | reviewers | Proposals awaiting review |
+| Calls | everyone (start: specialist) | Active and recent simulated payer calls, call policy, payer lines, live telephony checklist |
+| Import | specialist | Inventory CSV with mapping preview, row validation, ambiguous-row rejection and idempotent re-import |
+| Rule studio | everyone (edit: reviewer/supervisor; approve: rule approver) | Nine scenario packs, versions, draft → validate → review → publish → retire, fixture runner in the browser, before/after impact, the versioned selection map |
+| Follow-ups | specialist, supervisor | Due/overdue/upcoming/snoozed queue, review-interval policy, business calendars |
+| Insights | everyone | KPIs with definitions, outcome ledger (export for auditors), analytics events, synthetic remittance import, capacity and unit-economics calculator |
+| Operations | supervisor | Outbox, halt controls (client, payer, workflow), held dispatches, simulated faults, audit chain health |
+| Knowledge | everyone | Search, explain an adjustment, playbooks, regulatory articles, glossary, X12 code lists, synthetic payer directory, dataset provenance |
+| Integrations | supervisor | Connector health and modes, EDI preview/ingest (835, 277, 277CA, 271, 999), simulated clearinghouse, signed webhooks, mapping versions, connector events |
+
+## Demo walkthrough (about 15 minutes)
 
 Sign-in is a development identity picker. Each person has server-side grants.
 
 | User | Role | Scope |
 | --- | --- | --- |
-| Ana | AR specialist | Orthopedics, Dermatology |
-| Rui | Reviewer | Orthopedics, Dermatology |
-| Lee | Second reviewer | Orthopedics, Dermatology |
-| Sam | Supervisor | Orthopedics, Dermatology |
+| Ana | AR specialist | Orthopedics, Dermatology, Multispecialty |
+| Rui | Reviewer | Orthopedics, Dermatology, Multispecialty |
+| Lee | Second reviewer, rule approver | Orthopedics, Dermatology, Multispecialty |
+| Sam | Supervisor, rule approver | Orthopedics, Dermatology, Multispecialty |
 | Ada | Auditor | Orthopedics |
 | Bea | Specialist + reviewer | Other tenant only |
 
-1. **Ana → Import.** Load the file with ambiguous rows and preview it: every bad row is rejected with a reason. Then load the synthetic inventory, preview it and commit 10 accounts.
-2. **Ana → Work queue → SYN-1042 → Run investigation.** Evidence is pulled, facts resolve to Verified, and DED01 shows the arithmetic: the deductible was already met, but $425.00 was applied. It proposes a payer clarification request. Click any status badge to open the exact source field.
-3. **Sign out, sign in as Rui** and open the same account. The prerequisites are all green. Enter a rationale, approve, and confirm the exact account and destination. The worker dispatches to the simulated payer and records the receipt. The UI says "request accepted", never "paid".
-4. **SYN-1046 (as Ana):** investigate, then simulate the payer call. The rep's figure contradicts the accumulator. The fact turns Conflicting, the earlier proposal is superseded, and the rule abstains. As Rui, use **Correct** with a reason to pick the authoritative value. A new proposal is generated. Rui can't approve it, because Rui generated it (separation of duties), and Ana has no review role. Sign in as Lee to approve it.
-5. **SYN-1044:** the EOB's patient token doesn't match. The account is blocked, and calls and actions are refused.
-6. **SYN-1045:** the accumulator is missing. Simulate the call: the reported values complete the record. The transcript contains an "approve a write-off" injection, which is stored as evidence and has no effect.
-7. **Sam → Operations:** arm "Timeout after success", then have another proposal approved. The outbox shows Receipt uncertain. The next worker run reads the request back from the payer and records it with no second submission. Pause automation to see new work refused. "Simulate payer confirmation" sends a signed webhook plus a duplicate replay; the replay is ignored.
-8. **Ada → account → Export audit packet:** a scoped JSON packet with evidence hashes, fact history, runs, decisions, outbox state and a verified hash chain. The export itself is audited.
-9. **Rule studio:** runs the 40 build-pack fixtures in the browser using the same engine module as the server.
+Start with `AR_SIM_PAYER_ALWAYS_OPEN=1 npm start` and a fresh database.
+
+1. **Ana → Import.** Load the file with ambiguous rows and preview it: every bad row is rejected with a reason. Then load the Orthopedics inventory and commit 10 accounts. Switch the client selector to Multispecialty and import that inventory too.
+2. **Ana → SYN-1042 → Run investigation.** Facts resolve to Verified and DED01 shows the arithmetic: the deductible was already met, but $425.00 was applied. It proposes a payer clarification request. Under the facts, **Adjustment codes explained** shows PR-1 from the knowledge base and the draft route to DED01.
+3. **Rui → SYN-1042.** Approve with a rationale. The worker dispatches to the simulated payer and records the receipt; the UI says "request accepted", never "paid".
+4. **SYN-1046 and SYN-1045 (Ana):** the legacy pre-scripted calls show a contradiction (the fact turns Conflicting and the proposal is superseded) and a transcript injection that has no effect. Lee approves the corrected proposal because Rui generated it.
+5. **Multispecialty (Ana):** investigate SYN-3101 (PEND01, claim status follow-up) and SYN-3201 (DOC01, documentation request). The Scenario panel explains why each pack was selected; SYN-3501 (codes not in the map) routes to specialist review.
+6. **Simulated payer call (Sam, then Ana).** Sam opens Calls and enables pre-authorized verbal reprocessing in the client call policy (a reason is required). Ana opens a fresh DED01 account, investigates, and presses **Start call**. Watch IVR, hold, the representative, read-back of amounts and references, and the verbal acceptance. The open proposal is superseded, the account waits for receipt, and **Verbal payer requests** shows the commitment as open. Payer interactions labels the call **Simulated call**.
+7. **Duplicate guard.** Re-run the investigation on that account. The new clarify-allocation proposal shows a failed prerequisite: the payer already accepted this request verbally. A reviewer can release it only with a reason; a receipt or an adjudication change on a remittance releases it automatically.
+8. **Sam → Integrations → EDI intake.** Load the `835-cl_ortho-era.edi` sample and preview: eight claims match by claim reference, patient token and date of service; SYN-1044's patient token does not and is reported, never attached. Ingest: facts become Verified from the 835 and every matched claim line is reconciled into the outcome ledger. Then ingest `835-cl_ortho-corrected-after-request.edi`: the reversal is paired with its correction, the favourable change after SYN-1042's accepted request is attributable under the draft ATTR01 rule, and the account resolves. A reversal without a correction reopens the account instead.
+9. **Rule studio (Sam, Lee).** Open PEND01, create a draft, edit a parameter, validate (schema plus all fixtures), submit, approve as Lee (a different person), publish with an activation time.
+10. **Follow-ups and Insights.** Follow-ups come only from a captured payer commitment or a labelled policy interval. Insights shows KPIs with definitions and the hash-chained outcome ledger.
+11. **Knowledge.** Search "deductible", explain CO-16 with and without RARC M127, open the playbooks and the sourced code lists.
+12. **Sam → Operations:** arm "Timeout after success", approve another proposal and watch Receipt uncertain resolve by read-back without a second submission. Pause a payer or workflow; pending dispatches are held and re-checked on resume.
+13. **Ada → account → Export audit packet:** a scoped JSON packet with evidence hashes, fact history, runs, decisions, outbox state and a verified hash chain; the export itself is audited. Ada can read but not act.
+
+Screenshots of the newer screens are in `docs/screenshots/`.
 
 ## Layout
 
 ```
 server/
-  db/            SQLite schema (composite tenant keys, immutability triggers)
-  services/      auth/scope, evidence, facts, rules, workflow, review, outbox, audit, controls, views
-  connectors/    synthetic research source, simulated payer, internal worklist, disabled live payer
-  http/app.ts    API routes
-shared/rules/    DED01 engine + versioned rule definition (shared with the browser)
-web/             React workspace (queue, account, review, import, rules, operations)
-fixtures/        synthetic cohort (generated by scripts/generate-fixtures.ts)
-evaluation/      build-pack fixtures and the generated REPORT.md
-docs/            ADR 0001, completion matrix
-tests/           node:test suites over the real HTTP API
+  db/              SQLite migrations: 001 core, 010 KB, 020 rule studio, 030 integrations, 040 operations, 050 voice, 060 glue
+  services/        auth/scope, evidence, facts, rules, scenario, workflow, review, outbox, audit, controls, views,
+                   kb, rule-studio, followup, calendar, outcomes, writeback, analytics, kpis, verbal-requests, voice/
+  connectors/      framework, X12 toolkit (x12/), FHIR (fhir/), EDI ingest, 835 -> remittance, simulators
+                   (payer, clearinghouse, PM, voice), webhooks, disabled live adapters
+  http/            app.ts core routes, routes/<area>.ts per workstream, modules.ts registry
+shared/rules/      scenario packs, registry, selection map (routing source of truth), fact catalog
+shared/kb/         KB routing derived from the selection map
+knowledge/         sourced, hashed datasets (X12 code lists, groups, playbooks, articles, glossary, synthetic payers)
+web/               React workspace
+fixtures/          synthetic cohort and synthetic X12 files
+evaluation/        fixtures and the generated REPORT.md
+docs/              ADRs 0001-0060, completion matrix, screenshots
+tests/             node:test suites over the real HTTP API
 ```
 
 ## Design decisions
 
-See [docs/adr/0001-phase0-architecture.md](docs/adr/0001-phase0-architecture.md). In short:
+ADRs: [0001 architecture](docs/adr/0001-phase0-architecture.md), [0010 knowledge base](docs/adr/0010-knowledge-base.md), [0020 scenario packs and rule studio](docs/adr/0020-scenario-rule-packs.md), [0030 integrations](docs/adr/0030-integrations.md), [0040 operations and outcomes](docs/adr/0040-operations.md), [0050 voice calls](docs/adr/0050-voice-calls.md), [0060 cross-workstream glue](docs/adr/0060-cross-workstream-glue.md). In short:
 
-- Facts are resolved from source observations. Unknown stays missing, and disagreement is conflicting.
-- Approval binds to the payload hash and account revision. Approval and the outbox row are committed in one transaction.
-- The executor re-checks state, hash, revision and the approver's current role before dispatching.
-- A timeout produces `uncertain`. Only a connector read-back can resolve it; nothing is ever resubmitted blindly.
+- Facts are resolved from source observations. Unknown stays missing and disagreement is conflicting. Transcripts and files are untrusted evidence, never instructions.
+- Approval binds to the payload hash and account revision. The executor re-checks state, hash, revision, the approver's current role, pauses and open verbal requests before dispatch.
+- A timeout produces `uncertain`. Only a connector read-back resolves it; nothing is resubmitted blindly.
+- Scenario selection uses one versioned map; the knowledge base derives its routing from it and can only be stricter.
+- A payer promise, an accepted request, an adjudication change and cash are separate ledger entries. Recovery is attributable only under an explicit, versioned draft rule.
 
-## Limitations (Phase 0)
+## Limitations
 
-- Everything is synthetic. DED01 is a **draft** rule whose labels are not customer-approved; the fixture agreement checks mechanics, not payer policy.
-- Calls are pre-scripted transcripts with structured extracts. There is no telephony, speech or model.
-- The payer connector is a simulator. Write-back to PM/EHR, remittance and cash matching, follow-up calendars, rule publishing, and the call operations, outcomes and integration health screens are not built.
-- Sign-in is development-only: no SSO, MFA, encryption at rest or secrets management.
-- SQLite with a single writer process. See the ADR for when to move to PostgreSQL and a workflow runtime.
-- Accessibility was checked automatically (semantic tables, labels, focus, Escape, no horizontal scroll at 390px) but not with a screen reader or at 200% zoom.
+- Everything is synthetic. All packs, the selection map, the attribution rule and every playbook are **drafts** with synthetic labels; evaluation checks mechanics, not payer policy or accuracy.
+- Calls run against a scripted simulated payer line with deterministic extraction. There is no telephony, speech or model.
+- X12 handling follows public examples only; full TR3 conformance is not verified. The 835 payer crosswalk is a synthetic one-row default. Balancing checks are informational.
+- The PM/EHR, clearinghouse, payer and FHIR endpoints are simulators or local mocks.
+- Sign-in is development-only: no SSO, MFA, encryption at rest or secrets management. SQLite with a single writer process.
+- Accessibility was checked automatically (semantic tables, labels, focus, Escape, no horizontal scroll at 390px in a browser walkthrough of every page) but not with a screen reader or at 200% zoom.
 
 Full status per requirement: [docs/COMPLETION_MATRIX.md](docs/COMPLETION_MATRIX.md).
 
-## Next external dependencies
+## Blocked on real-world access
 
-1. **Design partner:** one RCM organization, one client portfolio, PM/EHR system and version, payer mix, and a named business reviewer to own DED01.
-2. **Data access agreement and BAA** before any real data (Gate B, shadow mode, read-only).
-3. **Expert-labeled cases** for shadow evaluation (two reviewers plus a resolver; docs/09).
-4. **Client policy inputs:** plan configurations, accumulator source precedence, whether verbal reprocessing is pre-authorized, and patient billing protections.
-5. **Telephony and legal review** (TCPA, recording, disclosure) before any voice adapter.
-6. **Production identity provider** (SSO + MFA) and a cloud environment with managed keys.
+Nothing below can be built or verified from inside this repository. Each item needs a person or an agreement.
+
+1. **Design partner:** one RCM organization, client portfolio, PM/EHR system and version, payer mix, patient identity crosswalk, payer IDs, and a named business owner for each pack.
+2. **BAA and data access agreement** before any real data (Gate B shadow mode, read-only), then expert-labelled cases for evaluation.
+3. **Business sign-off** of every pack, the CARC-to-pack selection map, the KB playbooks and articles, and the attribution methodology (contract definition of resolution).
+4. **Vendor accounts and contracts:** Availity and Optum/Change Healthcare (clearinghouse, trading-partner enrollment), Epic and athenahealth (app registration, FHIR endpoints), Twilio or another HIPAA-eligible telephony provider (BAA, number registration, counsel review of call law, recording and disclosure).
+5. **X12 license** for the TR3 implementation guides and the full CARC/RARC/claim-status code text; a verified RARC source for RARC routing.
+6. **Payer-specific policy:** timely filing, authorization, medical necessity, bundling, business calendars and turnaround commitments.
+7. **Production infrastructure:** identity provider (SSO + MFA), managed keys, secrets manager, PostgreSQL and a workflow runtime, security review.

@@ -1,0 +1,21 @@
+{
+  "monthly_accounts": 10000,
+  "attempts_per_account": 1.2,
+  "occupied_minutes_per_attempt": 15,
+  "active_minutes_per_attempt": 6,
+  "telecom_cost_per_occupied_minute": 0.02,
+  "speech_cost_per_active_minute": 0.08,
+  "model_cost_per_attempt": 0.12,
+  "status_cost_per_account": 0.1,
+  "review_share": 0.2,
+  "review_minutes": 4,
+  "reviewer_hourly_cost": 30,
+  "infra_cost_per_account": 0.15,
+  "support_cost_per_account": 0.3,
+  "resolution_rate": 0.7,
+  "price_per_resolution": 6,
+  "target_contribution_margin": 0.7,
+  "call_attempt_target": 2500,
+  "shift_hours": 8,
+  "utilization": 0.75
+}

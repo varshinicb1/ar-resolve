@@ -1,0 +1,100 @@
+{
+  "header": {
+    "dataset": "x12.group",
+    "title": "Claim Adjustment Group Codes",
+    "source": "CMS Blue Button ANSI_GRP_CD code system; Medicare Claims Processing Manual Ch. 22 §60.1 (Rev. 2843)",
+    "sourceUrl": "https://bluebutton.cms.gov/fhir/CodeSystem/ANSI-GRP-CD/",
+    "method": "WebFetch of both CMS pages; names and definitions excerpted",
+    "coverage": {
+      "complete": true,
+      "firstCode": "CO",
+      "lastCode": "PR",
+      "note": "Whether CR remains valid in the currently adopted 835 version was not verified in this session."
+    },
+    "license": {
+      "holder": "U.S. Government (CMS)",
+      "statement": "CMS publications",
+      "policy": "Excerpts with citation."
+    },
+    "retrievedAt": "2026-10-12",
+    "count": 5,
+    "sha256": "ecf1b80abd37f31490b6f87eb176a4e230807008eaf22c9c1a0695aab2c25a7f"
+  },
+  "entries": [
+    {
+      "type": "group",
+      "code": "CO",
+      "description": "Contractual Obligations",
+      "descriptionStatus": "excerpt_first_sentence",
+      "descriptionSource": "https://bluebutton.cms.gov/fhir/CodeSystem/ANSI-GRP-CD/",
+      "definition": "This group code shall be used when a contractual agreement between the payer and payee [continues in source]",
+      "definitionSource": "https://www.cms.gov/Regulations-and-Guidance/Guidance/Manuals/downloads/clm104c22.pdf §60.1",
+      "startDate": null,
+      "lastModifiedDate": null,
+      "stopDate": null,
+      "status": "current",
+      "sourceUrl": "https://bluebutton.cms.gov/fhir/CodeSystem/ANSI-GRP-CD/",
+      "notes": "Generally not billable to the patient under the contract; confirm with contract and client policy."
+    },
+    {
+      "type": "group",
+      "code": "CR",
+      "description": "Corrections and Reversals",
+      "descriptionStatus": "excerpt_first_sentence",
+      "descriptionSource": "https://bluebutton.cms.gov/fhir/CodeSystem/ANSI-GRP-CD/",
+      "definition": "this group code should be used for correcting a prior claim.",
+      "definitionSource": "https://bluebutton.cms.gov/fhir/CodeSystem/ANSI-GRP-CD/",
+      "startDate": null,
+      "lastModifiedDate": null,
+      "stopDate": null,
+      "status": "current",
+      "sourceUrl": "https://bluebutton.cms.gov/fhir/CodeSystem/ANSI-GRP-CD/",
+      "notes": "Current-version validity unverified; treat as specialist review."
+    },
+    {
+      "type": "group",
+      "code": "OA",
+      "description": "Other Adjustments",
+      "descriptionStatus": "excerpt_first_sentence",
+      "descriptionSource": "https://bluebutton.cms.gov/fhir/CodeSystem/ANSI-GRP-CD/",
+      "definition": "This group code shall be used when no other group code applies to the adjustment.",
+      "definitionSource": "https://www.cms.gov/Regulations-and-Guidance/Guidance/Manuals/downloads/clm104c22.pdf §60.1",
+      "startDate": null,
+      "lastModifiedDate": null,
+      "stopDate": null,
+      "status": "current",
+      "sourceUrl": "https://bluebutton.cms.gov/fhir/CodeSystem/ANSI-GRP-CD/",
+      "notes": null
+    },
+    {
+      "type": "group",
+      "code": "PI",
+      "description": "Payer Initiated Reductions",
+      "descriptionStatus": "excerpt_first_sentence",
+      "descriptionSource": "https://bluebutton.cms.gov/fhir/CodeSystem/ANSI-GRP-CD/",
+      "definition": "...in the opinion of the payer, the adjustment is not the responsibility of the patient...",
+      "definitionSource": "https://bluebutton.cms.gov/fhir/CodeSystem/ANSI-GRP-CD/",
+      "startDate": null,
+      "lastModifiedDate": null,
+      "stopDate": null,
+      "status": "current",
+      "sourceUrl": "https://bluebutton.cms.gov/fhir/CodeSystem/ANSI-GRP-CD/",
+      "notes": null
+    },
+    {
+      "type": "group",
+      "code": "PR",
+      "description": "Patient Responsibility",
+      "descriptionStatus": "excerpt_first_sentence",
+      "descriptionSource": "https://bluebutton.cms.gov/fhir/CodeSystem/ANSI-GRP-CD/",
+      "definition": "This group code shall be used when the adjustment represent an amount that may be billed to the patient or insured.",
+      "definitionSource": "https://www.cms.gov/Regulations-and-Guidance/Guidance/Manuals/downloads/clm104c22.pdf §60.1",
+      "startDate": null,
+      "lastModifiedDate": null,
+      "stopDate": null,
+      "status": "current",
+      "sourceUrl": "https://bluebutton.cms.gov/fhir/CodeSystem/ANSI-GRP-CD/",
+      "notes": "\"May be billed\" is not \"must be billed\": patient-billing protections and client policy still apply (build pack doc 08)."
+    }
+  ]
+}

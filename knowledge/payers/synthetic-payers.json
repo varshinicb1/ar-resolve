@@ -1,0 +1,200 @@
+{
+  "header": {
+    "dataset": "kb.payers",
+    "title": "Synthetic payer directory",
+    "source": "Invented for the synthetic environment",
+    "sourceUrl": null,
+    "method": "Authored synthetic data; no real payer policies, phone numbers, payer IDs or turnaround times",
+    "coverage": {
+      "complete": true,
+      "note": "Scoped per tenant/client."
+    },
+    "license": {
+      "holder": "project",
+      "statement": "Synthetic",
+      "policy": "Synthetic only."
+    },
+    "retrievedAt": "2026-10-12",
+    "count": 4,
+    "sha256": "84b96fbecfa7d81e2243ee7bf466e7c4843732c87e120c74526bae8be5fbd15e"
+  },
+  "entries": [
+    {
+      "tenantId": "tn_demo",
+      "clientId": "cl_ortho",
+      "payerId": "demo-payer",
+      "name": "Demo Payer A",
+      "synthetic": true,
+      "disclaimer": "SYNTHETIC: invented payer for demos and tests. Not a real organization; numbers use the fictional 555-01xx range.",
+      "channels": [
+        {
+          "kind": "phone",
+          "label": "Synthetic provider line",
+          "value": "+1-555-0100",
+          "hours": "Mon-Fri 08:00-17:00 (synthetic)"
+        },
+        {
+          "kind": "portal",
+          "label": "Synthetic provider portal",
+          "value": "simulator://demo-payer/portal"
+        },
+        {
+          "kind": "edi",
+          "label": "276/277 via simulator",
+          "value": "sim_payer"
+        }
+      ],
+      "ivr": [
+        {
+          "prompt": "Provider services",
+          "press": "2",
+          "children": [
+            {
+              "prompt": "Claim status",
+              "press": "1",
+              "children": [
+                {
+                  "prompt": "Speak to a representative",
+                  "press": "0"
+                }
+              ]
+            },
+            {
+              "prompt": "Eligibility",
+              "press": "2"
+            }
+          ]
+        }
+      ],
+      "tatCommitments": [
+        {
+          "action": "reprocessing_request",
+          "value": 30,
+          "unit": "business_days",
+          "basis": "synthetic"
+        },
+        {
+          "action": "information_request",
+          "value": 10,
+          "unit": "business_days",
+          "basis": "synthetic"
+        }
+      ],
+      "authentication": [
+        "NPI (synthetic)",
+        "Tax ID (synthetic)",
+        "Member ID token",
+        "Date of service"
+      ],
+      "notes": "Client override for Synthetic Orthopedics Group."
+    },
+    {
+      "tenantId": "tn_demo",
+      "clientId": "cl_derm",
+      "payerId": "demo-payer",
+      "name": "Demo Payer A",
+      "synthetic": true,
+      "disclaimer": "SYNTHETIC: invented payer for demos and tests. Not a real organization; numbers use the fictional 555-01xx range.",
+      "channels": [
+        {
+          "kind": "phone",
+          "label": "Synthetic provider line",
+          "value": "+1-555-0100",
+          "hours": "Mon-Fri 08:00-17:00 (synthetic)"
+        },
+        {
+          "kind": "edi",
+          "label": "276/277 via simulator",
+          "value": "sim_payer"
+        }
+      ],
+      "ivr": [
+        {
+          "prompt": "Provider services",
+          "press": "2",
+          "children": [
+            {
+              "prompt": "Claim status",
+              "press": "1"
+            }
+          ]
+        }
+      ],
+      "tatCommitments": [
+        {
+          "action": "reprocessing_request",
+          "value": 21,
+          "unit": "business_days",
+          "basis": "synthetic"
+        }
+      ],
+      "authentication": [
+        "NPI (synthetic)",
+        "Member ID token"
+      ],
+      "notes": "Client override for Synthetic Dermatology Clinic (different synthetic TAT)."
+    },
+    {
+      "tenantId": "tn_demo",
+      "clientId": "cl_ortho",
+      "payerId": "demo-payer-b",
+      "name": "Demo Payer B",
+      "synthetic": true,
+      "disclaimer": "SYNTHETIC: invented payer for demos and tests. Not a real organization; numbers use the fictional 555-01xx range.",
+      "channels": [
+        {
+          "kind": "phone",
+          "label": "Synthetic claims line",
+          "value": "+1-555-0142",
+          "hours": "Mon-Fri 09:00-16:00 (synthetic)"
+        }
+      ],
+      "ivr": [
+        {
+          "prompt": "Claims",
+          "press": "3",
+          "children": [
+            {
+              "prompt": "Enter claim number",
+              "press": "#"
+            }
+          ]
+        }
+      ],
+      "tatCommitments": [],
+      "authentication": [
+        "NPI (synthetic)"
+      ],
+      "notes": "No verified TAT: follow-up cannot be scheduled from a commitment."
+    },
+    {
+      "tenantId": "tn_other",
+      "clientId": "cl_other",
+      "payerId": "demo-payer",
+      "name": "Demo Payer A (other tenant)",
+      "synthetic": true,
+      "disclaimer": "SYNTHETIC: invented payer for demos and tests. Not a real organization; numbers use the fictional 555-01xx range.",
+      "channels": [
+        {
+          "kind": "phone",
+          "label": "Synthetic provider line",
+          "value": "+1-555-0199",
+          "hours": "synthetic"
+        }
+      ],
+      "ivr": [],
+      "tatCommitments": [
+        {
+          "action": "reprocessing_request",
+          "value": 45,
+          "unit": "calendar_days",
+          "basis": "synthetic"
+        }
+      ],
+      "authentication": [
+        "NPI (synthetic)"
+      ],
+      "notes": "Belongs to the other synthetic tenant; must never be visible to tn_demo users."
+    }
+  ]
+}

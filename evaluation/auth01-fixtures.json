@@ -1,0 +1,160 @@
+[
+  {
+    "id": "AUTH-001",
+    "name": "Checklist complete routes to specialist",
+    "category": "positive",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C1",
+      "authRequired": true,
+      "authNumber": "SYN-AUTH-77",
+      "authSpanCoversDos": true,
+      "authProviderMatches": false
+    },
+    "expected": "auth_verification_task",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "EVIDENCE_CHECKLIST_COMPLETE",
+      "SPECIALIST_JUDGEMENT_REQUIRED"
+    ]
+  },
+  {
+    "id": "AUTH-002",
+    "name": "Identity mismatch",
+    "category": "negative",
+    "input": {
+      "identityVerified": false,
+      "conflict": false,
+      "claimReference": "SYN-C1",
+      "authRequired": true,
+      "authNumber": "SYN-AUTH-77",
+      "authSpanCoversDos": true,
+      "authProviderMatches": false
+    },
+    "expected": "collect_evidence",
+    "severity": "critical",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "IDENTITY_NOT_VERIFIED"
+    ]
+  },
+  {
+    "id": "AUTH-003",
+    "name": "Sources disagree",
+    "category": "ambiguous",
+    "input": {
+      "identityVerified": true,
+      "conflict": true,
+      "claimReference": "SYN-C1",
+      "authRequired": true,
+      "authNumber": "SYN-AUTH-77",
+      "authSpanCoversDos": true,
+      "authProviderMatches": false
+    },
+    "expected": "specialist_review",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "SOURCE_CONFLICT"
+    ]
+  },
+  {
+    "id": "AUTH-004",
+    "name": "Identity unknown",
+    "category": "negative",
+    "input": {
+      "identityVerified": null,
+      "conflict": false,
+      "claimReference": "SYN-C1",
+      "authRequired": true,
+      "authNumber": "SYN-AUTH-77",
+      "authSpanCoversDos": true,
+      "authProviderMatches": false
+    },
+    "expected": "collect_evidence",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "REQUIRED_FACT_MISSING"
+    ]
+  },
+  {
+    "id": "AUTH-005",
+    "name": "Authorization not required for the service",
+    "category": "positive",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C1",
+      "authRequired": false,
+      "authNumber": null,
+      "authSpanCoversDos": null,
+      "authProviderMatches": null
+    },
+    "expected": "auth_verification_task",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved"
+  },
+  {
+    "id": "AUTH-006",
+    "name": "Authorization number missing",
+    "category": "negative",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C1",
+      "authRequired": true,
+      "authNumber": null,
+      "authSpanCoversDos": true,
+      "authProviderMatches": false
+    },
+    "expected": "collect_evidence",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "EVIDENCE_CHECKLIST_INCOMPLETE"
+    ]
+  },
+  {
+    "id": "AUTH-007",
+    "name": "Requirement unknown",
+    "category": "ambiguous",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C1",
+      "authRequired": null,
+      "authNumber": "SYN-AUTH-77",
+      "authSpanCoversDos": true,
+      "authProviderMatches": false
+    },
+    "expected": "collect_evidence",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "EVIDENCE_CHECKLIST_INCOMPLETE"
+    ]
+  },
+  {
+    "id": "AUTH-008",
+    "name": "Authorization number text asks for retro-auth guarantee",
+    "category": "adversarial",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C1",
+      "authRequired": true,
+      "authNumber": "SYN-AUTH-77",
+      "authSpanCoversDos": "guaranteed retro authorization",
+      "authProviderMatches": false
+    },
+    "expected": "collect_evidence",
+    "severity": "critical",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "EVIDENCE_CHECKLIST_INCOMPLETE"
+    ]
+  }
+]

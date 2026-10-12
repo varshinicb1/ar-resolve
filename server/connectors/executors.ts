@@ -3,9 +3,12 @@
 import { createHmac } from 'node:crypto';
 import { type Db, one, run } from '../db/db.ts';
 import { newId, nowIso } from '../util.ts';
+import { simPm } from './sim-pm.ts';
 
 export class ConnectorTimeout extends Error {}
 export class LiveExecutionDisabled extends Error {}
+// The target refused before writing (e.g. its record changed since preview). Never retried.
+export class PreflightFailed extends Error {}
 
 export interface SubmitResult { externalReference: string; status: 'accepted' | 'confirmed'; receipt: Record<string, unknown> }
 
@@ -26,6 +29,10 @@ export function setFault(db: Db, fault: 'timeout_after_success' | 'timeout_befor
   run(db, 'INSERT INTO sim_faults VALUES (?, ?) ON CONFLICT(fault) DO UPDATE SET remaining = excluded.remaining', fault, remaining);
 }
 
+// Structured review commitment returned by the SIMULATED payer's receipt. Invented
+// for the simulator; it is not any real payer's turnaround time.
+export const SIM_PAYER_COMMITMENT = { kind: 'turnaround', value: 30, unit: 'days', basis: 'business', statement: 'Simulated payer: request will be reviewed within 30 business days (synthetic simulator value)' };
+
 export const simPayer: Connector = {
   name: 'sim_payer',
   live: false,
@@ -36,7 +43,7 @@ export const simPayer: Connector = {
     if (!existing) {
       const ref = `SIM-REQ-${newId('r').slice(2, 10).toUpperCase()}`;
       run(db, 'INSERT INTO sim_payer_requests VALUES (?,?,?,?,?,?)', key, ref, payloadSha256, String(payload.actionKind), nowIso(), 'accepted');
-      result = { externalReference: ref, status: 'accepted', receipt: { system: 'simulated payer', externalReference: ref, acceptedAt: nowIso(), note: 'Request accepted for review. Not an adjudication or payment.' } };
+      result = { externalReference: ref, status: 'accepted', receipt: { system: 'simulated payer', externalReference: ref, acceptedAt: nowIso(), note: 'Request accepted for review. Not an adjudication or payment.', commitment: SIM_PAYER_COMMITMENT } };
     }
     if (takeFault(db, 'timeout_after_success')) throw new ConnectorTimeout('Simulated timeout after the payer accepted the request');
     return result!;
@@ -44,7 +51,7 @@ export const simPayer: Connector = {
   lookup(db, key) {
     const r = one<{ external_reference: string; status: string; received_at: string }>(db, 'SELECT external_reference, status, received_at FROM sim_payer_requests WHERE idempotency_key = ?', key);
     if (!r) return null;
-    return { externalReference: r.external_reference, status: r.status === 'confirmed' ? 'confirmed' : 'accepted', receipt: { system: 'simulated payer', externalReference: r.external_reference, acceptedAt: r.received_at, readBack: true } };
+    return { externalReference: r.external_reference, status: r.status === 'confirmed' ? 'confirmed' : 'accepted', receipt: { system: 'simulated payer', externalReference: r.external_reference, acceptedAt: r.received_at, readBack: true, commitment: SIM_PAYER_COMMITMENT } };
   },
 };
 
@@ -76,6 +83,7 @@ export const livePayer: Connector = {
 export function connectorFor(name: string): Connector {
   if (name === 'sim_payer') return simPayer;
   if (name === 'internal_worklist') return internalWorklist;
+  if (name === 'sim_pm') return simPm;
   return livePayer;
 }
 

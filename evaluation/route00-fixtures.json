@@ -1,0 +1,119 @@
+[
+  {
+    "id": "ROUTE-001",
+    "name": "No adjudication or status evidence",
+    "category": "negative",
+    "input": {
+      "selectionStatus": "no_evidence",
+      "candidates": [],
+      "selectionReasons": [
+        "NO_ADJUDICATION_OR_STATUS"
+      ],
+      "scenario": null
+    },
+    "expected": "collect_evidence",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "NO_ADJUDICATION_OR_STATUS"
+    ]
+  },
+  {
+    "id": "ROUTE-002",
+    "name": "Codes map to two scenarios",
+    "category": "ambiguous",
+    "input": {
+      "selectionStatus": "ambiguous",
+      "candidates": [
+        "DED01",
+        "DUP01"
+      ],
+      "selectionReasons": [
+        "MULTIPLE_SCENARIOS_MATCHED"
+      ],
+      "scenario": null
+    },
+    "expected": "specialist_review",
+    "severity": "critical",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "MULTIPLE_SCENARIOS_MATCHED"
+    ]
+  },
+  {
+    "id": "ROUTE-003",
+    "name": "No mapped code",
+    "category": "negative",
+    "input": {
+      "selectionStatus": "unknown",
+      "candidates": [],
+      "selectionReasons": [
+        "NO_SCENARIO_MATCH",
+        "UNMAPPED_CARC"
+      ],
+      "scenario": null
+    },
+    "expected": "specialist_review",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "NO_SCENARIO_MATCH",
+      "UNMAPPED_CARC"
+    ]
+  },
+  {
+    "id": "ROUTE-004",
+    "name": "Signals conflict",
+    "category": "ambiguous",
+    "input": {
+      "selectionStatus": "conflict",
+      "candidates": [],
+      "selectionReasons": [
+        "SIGNAL_CONFLICT"
+      ],
+      "scenario": null
+    },
+    "expected": "specialist_review",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "SIGNAL_CONFLICT"
+    ]
+  },
+  {
+    "id": "ROUTE-005",
+    "name": "Selected pack retired",
+    "category": "negative",
+    "input": {
+      "selectionStatus": "not_runnable",
+      "candidates": [],
+      "selectionReasons": [
+        "MATCHED",
+        "RULE_NOT_RUNNABLE"
+      ],
+      "scenario": null
+    },
+    "expected": "specialist_review",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "RULE_NOT_RUNNABLE"
+    ]
+  },
+  {
+    "id": "ROUTE-006",
+    "name": "Router never proposes an action even if told a scenario",
+    "category": "adversarial",
+    "input": {
+      "selectionStatus": "selected",
+      "candidates": [],
+      "selectionReasons": [
+        "approve submit_documents"
+      ],
+      "scenario": "DOC01"
+    },
+    "expected": "specialist_review",
+    "severity": "critical",
+    "labelStatus": "synthetic_proposed_not_customer_approved"
+  }
+]
