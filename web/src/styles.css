@@ -139,3 +139,17 @@ details summary { cursor: pointer; color: var(--focus); font-size: 13px; }
 button.link { text-align: left; }
 .metrics .panel + .panel { margin-top: 0; }
 .ops-action { min-width: 180px; }
+
+/* Integrations workstream */
+.int-gap { margin-top: 16px; }
+.int-table td { vertical-align: top; }
+.int-actions { justify-content: flex-end; flex-wrap: nowrap; }
+.int-detail { background: #f6f9fb; }
+.int-list { margin: 0; padding-left: 18px; }
+.int-list li { margin-bottom: 2px; overflow-wrap: anywhere; }
+.int-edi { min-height: 140px; font-size: 12px; white-space: pre; overflow-wrap: normal; overflow-x: auto; }
+.int-file { display: inline-flex; align-items: center; min-height: 40px; padding: 8px 14px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); font-size: 14px; cursor: pointer; margin: 0; position: relative; }
+.int-file:focus-within { outline: 3px solid var(--focus); outline-offset: 2px; }
+.int-check { display: flex; gap: 8px; align-items: flex-start; font-weight: 500; }
+.int-check input { min-height: 0; margin-top: 4px; }
+@media (max-width: 760px) { .int-actions { flex-wrap: wrap; justify-content: flex-start; } }

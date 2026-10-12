@@ -7,6 +7,7 @@ import { Reviews } from './pages/Reviews.tsx';
 import { Import } from './pages/Import.tsx';
 import { Rules } from './pages/Rules.tsx';
 import { Operations } from './pages/Operations.tsx';
+import { Integrations } from './pages/Integrations.tsx';
 
 export interface ScopeOption { tenantId: string; tenantName: string; clientId: string; clientName: string; roles: string[] }
 export interface Me { userId: string; displayName: string; scopes: ScopeOption[]; environment: string; liveActions: string }
@@ -83,6 +84,7 @@ export function App() {
     ['import', 'Import', null],
     ['rules', 'Rule studio', null],
     ['operations', 'Operations', counts.receipt_uncertain || null],
+    ...(roles.includes('supervisor') || roles.includes('admin') ? [['integrations', 'Integrations', null] as [string, string, null]] : []),
   ];
 
   return (
@@ -123,6 +125,7 @@ export function App() {
           {path === 'import' && <Import roles={roles} />}
           {path === 'rules' && <Rules />}
           {path === 'operations' && <Operations roles={roles} />}
+          {path === 'integrations' && <Integrations roles={roles} />}
         </main>
       </div>
       <Toaster />

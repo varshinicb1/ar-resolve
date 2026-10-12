@@ -9,6 +9,8 @@ import type { Scope } from './auth.ts';
 export const FACT_KEYS = [
   'identityVerified', 'planDesign', 'claimReference', 'adjustmentGroup', 'allowedCents', 'appliedCents',
   'limitCents', 'metBeforeCents', 'secondaryAtDos', 'crossoverStatus', 'postingVerified',
+  // Integrations workstream (EDI/FHIR): resolved like any other fact, not used by DED01.
+  'claimStatusCategory', 'deductibleRemainingCents', 'claimPaidCents', 'processedDate',
 ] as const;
 
 export interface Candidate { value: unknown; evidenceId: string; sourceClass: string; locator: unknown; observedAt: string }

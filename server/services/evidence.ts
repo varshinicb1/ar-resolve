@@ -5,8 +5,9 @@ import { type Db, all, one, run } from '../db/db.ts';
 import { canonicalJson, invalid, newId, nowIso, sha256 } from '../util.ts';
 import { audit } from './audit.ts';
 import type { Scope } from './auth.ts';
+import { integrationObservations, isIntegrationKind, type IntegrationKind } from '../connectors/observations.ts';
 
-export type EvidenceKind = 'eob' | 'eligibility' | 'clearinghouse_status' | 'pm_posting' | 'call_transcript' | 'reviewer_correction' | 'action_receipt' | 'import_row';
+export type EvidenceKind = 'eob' | 'eligibility' | 'clearinghouse_status' | 'pm_posting' | 'call_transcript' | 'reviewer_correction' | 'action_receipt' | 'import_row' | IntegrationKind;
 export type SourceClass = 'document' | 'structured' | 'transcript' | 'reviewer';
 
 export interface EvidenceRow {
@@ -90,6 +91,9 @@ export function extractObservations(kind: EvidenceKind, content: unknown): Obser
       out.push({ factKey: c.factKey, value: c.value, unit: CENTS_KEYS.has(c.factKey) ? 'USD_cents' : null, locator: { path: 'value' }, sourceClass: 'reviewer' });
       break;
     }
+    default:
+      // Integration evidence (EDI 835/277/271, FHIR): see server/connectors/observations.ts.
+      if (isIntegrationKind(kind)) out.push(...integrationObservations(kind, content));
   }
   return out;
 }

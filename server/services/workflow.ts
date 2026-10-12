@@ -11,6 +11,7 @@ import { addEvidence, validateCorrectionValue } from './evidence.ts';
 import { currentFacts, resolveFacts, type FactRow } from './facts.ts';
 import { evaluateAccount, loadRule, type RuleEvaluation } from './rules.ts';
 import { callScript, fetchDocuments } from '../connectors/synthetic-source.ts';
+import { structuredStatusEnabled, structuredStatusFirst } from '../connectors/sim-clearinghouse.ts';
 
 export const ACTIVE_RULE = { id: 'DED01', version: 1 };
 export const PROPOSAL_TTL_HOURS = 72;
@@ -206,6 +207,8 @@ export function investigate(db: Db, scope: Scope, accountId: string) {
     for (const d of fetchDocuments(scope.clientId, a.external_id)) {
       if (addEvidence(db, scope, { accountId, kind: d.kind, title: d.title, source: d.source, content: d.content, effectiveAt: d.effectiveAt })) added++;
     }
+    // Integrations: optional "structured status first" research step (per-client setting, default off).
+    if (structuredStatusEnabled(db, scope)) structuredStatusFirst(db, scope, accountId, { reevaluate: false });
     resolveFacts(db, scope, accountId);
     return evaluateAndPropose(db, scope, accountId, { trigger: 'investigation', evidenceAdded: added });
   });
