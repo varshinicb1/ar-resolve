@@ -143,3 +143,22 @@ Status values: **Implemented** (works and tested on synthetic data), **Mocked** 
 | FR09 | Verbal acceptance on a call blocks approval and dispatch of a same-class request until receipt, adjudication change, no-request-on-file or reviewer release with reason | Implemented | tests/verbal-guard.test.ts |
 | UI | Account page: KB code explanations for adjustment facts, "Simulated call" badge, readable voice/integration event labels, verbal requests panel | Implemented | docs/screenshots/account-ded01-codes.png, account-verbal.png |
 | UI | Browser walkthrough of every page, four roles, 1400px and 390px: no console errors, no horizontal scroll | Implemented | ADR 0060; Operations no longer polls for non-supervisors |
+## Ported from clinic-receptionist (ADR 0070, migration 070)
+
+| Area | Requirement | Status | Evidence |
+| --- | --- | --- | --- |
+| PHI01 | PHI readiness: vendors per layer, seven checks, `AR_PHI_MODE`, shown on the Integrations page | Implemented | tests/maya-port.test.ts "PHI gate: readiness…"; `GET /api/governance/readiness` |
+| PHI02 | Vendor/BAA register: append-only, versioned, audited, `integration_admin`, scoped; backs the ADR 0030 live gate | Implemented (attestation recorded by a person; contracts not verifiable by code) | tests/maya-port.test.ts; tests/integrations.test.ts "live adapters refuse…" |
+| PHI03 | Ingest gate: non-synthetic inventory rows and ISA15=P interchanges refused (409, audited); startup refuses unsafe `AR_PHI_MODE=on` | Implemented | tests/maya-port.test.ts "PHI gate: non-synthetic inventory…" |
+| PHI04 | AES-256-GCM sealing of call text, hand-off packets, evidence content, write-back texts, notification payloads and settings | Implemented | tests/maya-port.test.ts "sealing…" |
+| PHI05 | Sealing of note text inside the hash-bound proposed-action payload; key rotation | Not started | ADR 0070 "Left open" |
+| PHI06 | Real BAAs, hosting vendor, PHI mode in production | Blocked | docs/compliance/baa-tracker.md |
+| GRD01 | Guard: inbound injection, agency, memory, identity, credential and payment-redirect flags; outbound identifier, human-claim, promise, disclosure and unsourced-figure checks; clinical rules kept disabled | Implemented | tests/maya-port.test.ts "Guard inbound…", "Guard outbound…" |
+| GRD02 | Guard wired into the voice engine: rep turns become evidence warnings, a blocked agent utterance hands off, actions unchanged; transcript findings endpoint | Implemented | tests/maya-port.test.ts "Guard in the voice engine…" (sim script `guard_probe`) |
+| TEL01 | Twilio request validation (documented vector), TwiML builders, call request builders, status-callback parsing and dedupe, signed webhook routes | Implemented (verified against Twilio docs 2026-10-12; no call placed) | tests/maya-port.test.ts "Twilio request validation…", "TwiML builders…", "status callbacks…" |
+| TEL02 | Live telephony adapter as a real implementation behind an injected transport, refused by the deployment gate and the PHI gate | Implemented (refused) | tests/maya-port.test.ts "live telephony adapter…"; tests/voice.test.ts |
+| TEL03 | Live call orchestration (relay socket, turn loop), Twilio account, BAA, counsel review | Blocked | ADR 0070 "Left open" |
+| NOT01 | Notification connectors registry, audit-driven outbox, filters, retries and backoff, opaque payloads, simulated sink, settings UI | Implemented (real sends refused) | tests/maya-port.test.ts "notifications…" |
+| NOT02 | Real Slack, Teams, email and SMS sends | Blocked (disabled; payload shapes ported, not re-verified) | ADR 0070 |
+| FHIR01 | SMART discovery, safe base URLs, no redirects, timeouts, RS384 and ES384 with alg/key match | Implemented (against the local mock) | tests/maya-port.test.ts "SMART: discovery…"; tests/integrations.test.ts "FHIR R4 mock…" |
+| DOC01 | Compliance documents (README, BAA tracker, SOC 2 roadmap, eight policies) | Implemented (DRAFT; no attestation) | docs/compliance/ |

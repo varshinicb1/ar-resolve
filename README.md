@@ -18,14 +18,14 @@ Development with hot reload: `npm run dev` (API on 8080, UI on http://localhost:
 
 | Command | What it does |
 | --- | --- |
-| `npm test` | 117 tests in 17 suites over the real HTTP API (see below) |
+| `npm test` | 130 tests in 18 suites over the real HTTP API (see below) |
 | `npm run demo` | The Phase 0 acceptance journey end to end through the API, including a restart |
 | `npm run eval` | Regenerates `evaluation/REPORT.md`: DED01 40/40, all packs 141/141, selection 17/17, 3-client cohort 35/35 |
 | `npm run kb:verify` | Knowledge base integrity: provenance, hashes, duplicates, citations, and that every code the routing and the selection map use exists and is active |
 | `npm run worker` | Standalone outbox worker (start the API with `AR_WORKER=off` to use it) |
 | `npm run typecheck` | TypeScript check |
 
-Test suites: workflow 5, review/execution 11, scope 2, rule engine 3, scenario packs 6, rule studio 4, knowledge base 6, routing consistency 3, X12 7, integrations 9, 835 remittance 4, follow-ups 5, outcomes 4, write-back 5, controls/analytics 4, voice 16, verbal-request guard 3.
+Test suites: workflow 5, review/execution 11, scope 2, rule engine 3, scenario packs 6, rule studio 4, knowledge base 6, routing consistency 3, X12 7, integrations 9, 835 remittance 4, follow-ups 5, outcomes 4, write-back 5, controls/analytics 4, voice 16, verbal-request guard 3, clinic-receptionist port (PHI gate, Guard, telephony, notifications, SMART) 13.
 
 ## What each page does
 
@@ -41,7 +41,7 @@ Test suites: workflow 5, review/execution 11, scope 2, rule engine 3, scenario p
 | Insights | everyone | KPIs with definitions, outcome ledger (export for auditors), analytics events, synthetic remittance import, capacity and unit-economics calculator |
 | Operations | supervisor | Outbox, halt controls (client, payer, workflow), held dispatches, simulated faults, audit chain health |
 | Knowledge | everyone | Search, explain an adjustment, playbooks, regulatory articles, glossary, X12 code lists, synthetic payer directory, dataset provenance |
-| Integrations | supervisor | Connector health and modes, EDI preview/ingest (835, 277, 277CA, 271, 999), simulated clearinghouse, signed webhooks, mapping versions, connector events |
+| Integrations | supervisor | Connector health and modes, EDI preview/ingest (835, 277, 277CA, 271, 999), simulated clearinghouse, signed webhooks, mapping versions, connector events, PHI readiness, vendor/BAA register, notification channels with the simulated sink |
 
 ## Demo walkthrough (about 15 minutes)
 
@@ -78,11 +78,12 @@ Screenshots of the newer screens are in `docs/screenshots/`.
 
 ```
 server/
-  db/              SQLite migrations: 001 core, 010 KB, 020 rule studio, 030 integrations, 040 operations, 050 voice, 060 glue
+  db/              SQLite migrations: 001 core, 010 KB, 020 rule studio, 030 integrations, 040 operations, 050 voice, 060 glue, 070 port
   services/        auth/scope, evidence, facts, rules, scenario, workflow, review, outbox, audit, controls, views,
-                   kb, rule-studio, followup, calendar, outcomes, writeback, analytics, kpis, verbal-requests, voice/
+                   kb, rule-studio, followup, calendar, outcomes, writeback, analytics, kpis, verbal-requests, voice/,
+                   governance (PHI gate), phi (sealing), guard, notifications
   connectors/      framework, X12 toolkit (x12/), FHIR (fhir/), EDI ingest, 835 -> remittance, simulators
-                   (payer, clearinghouse, PM, voice), webhooks, disabled live adapters
+                   (payer, clearinghouse, PM, voice), webhooks, disabled live adapters, telephony/ (Twilio contract)
   http/            app.ts core routes, routes/<area>.ts per workstream, modules.ts registry
 shared/rules/      scenario packs, registry, selection map (routing source of truth), fact catalog
 shared/kb/         KB routing derived from the selection map
@@ -90,13 +91,13 @@ knowledge/         sourced, hashed datasets (X12 code lists, groups, playbooks, 
 web/               React workspace
 fixtures/          synthetic cohort and synthetic X12 files
 evaluation/        fixtures and the generated REPORT.md
-docs/              ADRs 0001-0060, completion matrix, screenshots
+docs/              ADRs 0001-0070, completion matrix, compliance drafts, screenshots
 tests/             node:test suites over the real HTTP API
 ```
 
 ## Design decisions
 
-ADRs: [0001 architecture](docs/adr/0001-phase0-architecture.md), [0010 knowledge base](docs/adr/0010-knowledge-base.md), [0020 scenario packs and rule studio](docs/adr/0020-scenario-rule-packs.md), [0030 integrations](docs/adr/0030-integrations.md), [0040 operations and outcomes](docs/adr/0040-operations.md), [0050 voice calls](docs/adr/0050-voice-calls.md), [0060 cross-workstream glue](docs/adr/0060-cross-workstream-glue.md). In short:
+ADRs: [0001 architecture](docs/adr/0001-phase0-architecture.md), [0010 knowledge base](docs/adr/0010-knowledge-base.md), [0020 scenario packs and rule studio](docs/adr/0020-scenario-rule-packs.md), [0030 integrations](docs/adr/0030-integrations.md), [0040 operations and outcomes](docs/adr/0040-operations.md), [0050 voice calls](docs/adr/0050-voice-calls.md), [0060 cross-workstream glue](docs/adr/0060-cross-workstream-glue.md), [0070 clinic-receptionist port](docs/adr/0070-clinic-receptionist-port.md). In short:
 
 - Facts are resolved from source observations. Unknown stays missing and disagreement is conflicting. Transcripts and files are untrusted evidence, never instructions.
 - Approval binds to the payload hash and account revision. The executor re-checks state, hash, revision, the approver's current role, pauses and open verbal requests before dispatch.
@@ -110,7 +111,8 @@ ADRs: [0001 architecture](docs/adr/0001-phase0-architecture.md), [0010 knowledge
 - Calls run against a scripted simulated payer line with deterministic extraction. There is no telephony, speech or model.
 - X12 handling follows public examples only; full TR3 conformance is not verified. The 835 payer crosswalk is a synthetic one-row default. Balancing checks are informational.
 - The PM/EHR, clearinghouse, payer and FHIR endpoints are simulators or local mocks.
-- Sign-in is development-only: no SSO, MFA, encryption at rest or secrets management. SQLite with a single writer process.
+- Sign-in is development-only: no SSO, MFA or secrets management. Free text is sealed at rest only when `AR_PHI_KEY` is set (ADR 0070). SQLite with a single writer process.
+- The PHI gate refuses non-synthetic data; nothing here is HIPAA compliant or SOC 2 attested (docs/compliance/, all drafts).
 - Accessibility was checked automatically (semantic tables, labels, focus, Escape, no horizontal scroll at 390px in a browser walkthrough of every page) but not with a screen reader or at 200% zoom.
 
 Full status per requirement: [docs/COMPLETION_MATRIX.md](docs/COMPLETION_MATRIX.md).
