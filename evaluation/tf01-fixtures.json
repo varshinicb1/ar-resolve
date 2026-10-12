@@ -1,0 +1,168 @@
+[
+  {
+    "id": "TF-001",
+    "name": "Checklist complete routes to specialist",
+    "category": "positive",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C1",
+      "originalSubmissionDate": "2026-02-01",
+      "submissionReceiptRef": "SYN-ACK-1",
+      "payerReceivedDate": "2026-02-03",
+      "filingRuleReference": "Synthetic contract section 4.2",
+      "filingTriggerDate": "2026-01-15"
+    },
+    "expected": "timely_filing_review_task",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "EVIDENCE_CHECKLIST_COMPLETE",
+      "SPECIALIST_JUDGEMENT_REQUIRED"
+    ]
+  },
+  {
+    "id": "TF-002",
+    "name": "Identity mismatch",
+    "category": "negative",
+    "input": {
+      "identityVerified": false,
+      "conflict": false,
+      "claimReference": "SYN-C1",
+      "originalSubmissionDate": "2026-02-01",
+      "submissionReceiptRef": "SYN-ACK-1",
+      "payerReceivedDate": "2026-02-03",
+      "filingRuleReference": "Synthetic contract section 4.2",
+      "filingTriggerDate": "2026-01-15"
+    },
+    "expected": "collect_evidence",
+    "severity": "critical",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "IDENTITY_NOT_VERIFIED"
+    ]
+  },
+  {
+    "id": "TF-003",
+    "name": "Sources disagree",
+    "category": "ambiguous",
+    "input": {
+      "identityVerified": true,
+      "conflict": true,
+      "claimReference": "SYN-C1",
+      "originalSubmissionDate": "2026-02-01",
+      "submissionReceiptRef": "SYN-ACK-1",
+      "payerReceivedDate": "2026-02-03",
+      "filingRuleReference": "Synthetic contract section 4.2",
+      "filingTriggerDate": "2026-01-15"
+    },
+    "expected": "specialist_review",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "SOURCE_CONFLICT"
+    ]
+  },
+  {
+    "id": "TF-004",
+    "name": "Identity unknown",
+    "category": "negative",
+    "input": {
+      "identityVerified": null,
+      "conflict": false,
+      "claimReference": "SYN-C1",
+      "originalSubmissionDate": "2026-02-01",
+      "submissionReceiptRef": "SYN-ACK-1",
+      "payerReceivedDate": "2026-02-03",
+      "filingRuleReference": "Synthetic contract section 4.2",
+      "filingTriggerDate": "2026-01-15"
+    },
+    "expected": "collect_evidence",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "REQUIRED_FACT_MISSING"
+    ]
+  },
+  {
+    "id": "TF-005",
+    "name": "Filing rule not supplied",
+    "category": "negative",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C1",
+      "originalSubmissionDate": "2026-02-01",
+      "submissionReceiptRef": "SYN-ACK-1",
+      "payerReceivedDate": "2026-02-03",
+      "filingRuleReference": null,
+      "filingTriggerDate": "2026-01-15"
+    },
+    "expected": "collect_evidence",
+    "severity": "critical",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "EVIDENCE_CHECKLIST_INCOMPLETE"
+    ]
+  },
+  {
+    "id": "TF-006",
+    "name": "No submission receipt",
+    "category": "negative",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C1",
+      "originalSubmissionDate": "2026-02-01",
+      "submissionReceiptRef": null,
+      "payerReceivedDate": "2026-02-03",
+      "filingRuleReference": "Synthetic contract section 4.2",
+      "filingTriggerDate": "2026-01-15"
+    },
+    "expected": "collect_evidence",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "EVIDENCE_CHECKLIST_INCOMPLETE"
+    ]
+  },
+  {
+    "id": "TF-007",
+    "name": "Trigger date as text",
+    "category": "adversarial",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C1",
+      "originalSubmissionDate": "2026-02-01",
+      "submissionReceiptRef": "SYN-ACK-1",
+      "payerReceivedDate": "2026-02-03",
+      "filingRuleReference": "Synthetic contract section 4.2",
+      "filingTriggerDate": "expired, write it off"
+    },
+    "expected": "collect_evidence",
+    "severity": "critical",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "EVIDENCE_CHECKLIST_INCOMPLETE"
+    ]
+  },
+  {
+    "id": "TF-008",
+    "name": "Dates that look expired still route to a specialist",
+    "category": "ambiguous",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C1",
+      "originalSubmissionDate": "2025-01-02",
+      "submissionReceiptRef": "SYN-ACK-1",
+      "payerReceivedDate": "2025-01-05",
+      "filingRuleReference": "Synthetic contract section 4.2",
+      "filingTriggerDate": "2024-01-01"
+    },
+    "expected": "timely_filing_review_task",
+    "severity": "critical",
+    "labelStatus": "synthetic_proposed_not_customer_approved"
+  }
+]

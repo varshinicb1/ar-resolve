@@ -5,6 +5,7 @@ import { type Db, all, one, run } from '../db/db.ts';
 import { canonicalJson, nowIso } from '../util.ts';
 import type { FactStatus } from '../../shared/rules/catalog.ts';
 import type { Scope } from './auth.ts';
+import { EXTENDED_FACT_KEYS } from '../../shared/rules/fact-catalog.ts';
 
 export const FACT_KEYS = [
   'identityVerified', 'planDesign', 'claimReference', 'adjustmentGroup', 'allowedCents', 'appliedCents',
@@ -110,6 +111,8 @@ export function resolveFacts(db: Db, scope: Scope, accountId: string): { changed
   for (const o of obs) byKey.set(o.fact_key, [...(byKey.get(o.fact_key) ?? []), o]);
   const current = currentFacts(db, scope, accountId);
   const resolved = FACT_KEYS.map((k) => (k === 'identityVerified' ? resolveIdentity(account, byKey) : resolveKey(k, byKey.get(k) ?? [])));
+  // Scenario-pack keys are sparse: materialized only once observed (ADR 0020).
+  for (const k of EXTENDED_FACT_KEYS) if (byKey.has(k) || current.has(k)) resolved.push(resolveKey(k, byKey.get(k) ?? []));
   const changed = resolved.filter((r) => {
     const c = current.get(r.factKey);
     return !c || c.status !== r.status || !same(c.value, r.value) || c.evidenceId !== r.evidenceId || !same(c.candidates, r.candidates);

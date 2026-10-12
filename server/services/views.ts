@@ -1,7 +1,7 @@
 // Read models for the account workspace and the scoped audit export (FR15).
 import { type Db, all, one } from '../db/db.ts';
 import { hashJson, nowIso } from '../util.ts';
-import { DED01_V1 } from '../../shared/rules/catalog.ts';
+import { scenarioView } from './scenario.ts';
 import { audit, accountEvents, verifyChain } from './audit.ts';
 import { can, requirePerm, type Scope } from './auth.ts';
 import { listEvidence } from './evidence.ts';
@@ -18,10 +18,13 @@ export function accountView(db: Db, scope: Scope, accountId: string) {
   requirePerm(scope, 'view');
   const a = getAccountRow(db, scope, accountId);
   const facts = currentFacts(db, scope, accountId);
-  const factList = DED01_V1.requiredFacts.map((rf) => {
+  // Facts shown are the selected pack's required facts (DED01 for Phase 0 accounts).
+  const scenario = scenarioView(db, scope, a, facts);
+  const factList = scenario.factRule.definition.requiredFacts.map((rf) => {
     const f = facts.get(rf.key);
     return { key: rf.key, label: rf.label, acceptedStatuses: rf.acceptedStatuses, status: f?.status ?? 'missing', value: f?.value ?? null,
-      unit: f?.unit ?? null, version: f?.version ?? 0, evidenceId: f?.evidenceId ?? null, locator: f?.locator ?? null, candidates: f?.candidates ?? [] };
+      unit: f?.unit ?? null, version: f?.version ?? 0, evidenceId: f?.evidenceId ?? null, locator: f?.locator ?? null, candidates: f?.candidates ?? [],
+      ...(rf.optional ? { optional: true } : {}) };
   });
   const latestRun = one<{ run_id: string; state: string; result: string; inputs: string; account_revision: number; rule_id: string; rule_version: number; rule_sha256: string; created_by: string; created_at: string }>(db,
     'SELECT * FROM workflow_runs WHERE tenant_id=? AND client_id=? AND account_id=? ORDER BY created_at DESC, rowid DESC LIMIT 1', scope.tenantId, scope.clientId, accountId);
@@ -56,6 +59,7 @@ export function accountView(db: Db, scope: Scope, accountId: string) {
     interactions,
     timeline: accountEvents(db, scope.tenantId, scope.clientId, accountId),
     pause: activePause(db, scope.tenantId, scope.clientId),
+    scenario: { current: scenario.current, lastRun: scenario.lastRun, pack: scenario.pack },
     permissions: { investigate: can(scope, 'investigate'), correct: can(scope, 'correct_fact'), review: can(scope, 'review'), operate: can(scope, 'operate'), export: can(scope, 'audit_export') },
   };
 }

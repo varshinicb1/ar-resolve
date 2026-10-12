@@ -36,7 +36,7 @@ export function Rules() {
           </Panel>
           <Panel title="Actions">
             <table><thead><tr><th>Outcome</th><th>Risk class</th><th>Connector</th></tr></thead>
-              <tbody>{d.actions.map((a) => <tr key={a.kind}><td>{OUTCOME_LABELS[a.kind]}</td><td>{a.risk.replace(/_/g, ' ')}</td><td>{a.connector ?? 'none (abstain)'}</td></tr>)}</tbody></table>
+              <tbody>{d.actions.map((a) => <tr key={a.kind}><td>{OUTCOME_LABELS[a.kind as keyof typeof OUTCOME_LABELS] ?? a.kind}</td><td>{a.risk.replace(/_/g, ' ')}</td><td>{a.connector ?? 'none (abstain)'}</td></tr>)}</tbody></table>
             <p className="small" style={{ marginTop: 8 }}>Prohibited: {d.prohibitedActions.join(', ').replace(/_/g, ' ')}</p>
             <p className="small muted">Sources: {d.sources.join(' · ')}</p>
           </Panel>
