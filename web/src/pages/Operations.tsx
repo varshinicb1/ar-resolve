@@ -18,8 +18,10 @@ export function Operations({ roles }: { roles: string[] }) {
   const [reason, setReason] = useState('');
   const [err, setErr] = useState('');
   const load = useCallback(() => api.get<Ops>('/api/ops/outbox').then((o) => { setOps(o); setErr(''); }).catch((e) => setErr(errorText(e))), []);
-  useEffect(() => { load(); const t = setInterval(load, 3000); return () => clearInterval(t); }, [load]);
-  if (!roles.includes('supervisor')) return <><Heading eyebrow="Supervisor" title="Operations" /><div className="callout info">Operations controls require the supervisor role in this client.</div></>;
+  const supervisor = roles.includes('supervisor');
+  // Only supervisors may read the outbox; do not poll (and 403) for other roles.
+  useEffect(() => { if (!supervisor) return; load(); const t = setInterval(load, 3000); return () => clearInterval(t); }, [load, supervisor]);
+  if (!supervisor) return <><Heading eyebrow="Supervisor" title="Operations" /><div className="callout info">Operations controls require the supervisor role in this client.</div></>;
   if (err) return <div className="callout danger">{err}</div>;
   if (!ops) return <p className="muted">Loading…</p>;
   const paused = ops.controls.find((c) => c.paused);

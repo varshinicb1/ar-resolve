@@ -71,8 +71,11 @@ export function Integrations({ roles }: { roles: string[] }) {
     if (!preview) return;
     setBusy(true);
     try {
-      const r = await api.post<{ duplicate: boolean; fileId: string; state?: string }>('/api/integrations/edi/ingest', { filename, content, expectedSha256: preview.rawSha256 });
-      toast(r.duplicate ? `Already ingested as ${r.fileId}; nothing changed.` : `Ingested as ${r.fileId} (${r.state}). Matched items were added as evidence.`);
+      const r = await api.post<{ duplicate: boolean; fileId: string; state?: string; report?: { remittance?: { lines: number; skipped: unknown[]; reopened: string[]; resolved: string[] } } }>('/api/integrations/edi/ingest', { filename, content, expectedSha256: preview.rawSha256 });
+      // ADR 0060: 835 claim payments are also reconciled into the outcome ledger.
+      const rm = r.report?.remittance;
+      const remit = rm && (rm.lines || rm.skipped.length) ? ` Remittance: ${rm.lines} line(s) reconciled, ${rm.skipped.length} skipped, ${rm.reopened.length} reopened, ${rm.resolved.length} resolved.` : '';
+      toast(r.duplicate ? `Already ingested as ${r.fileId}; nothing changed.` : `Ingested as ${r.fileId} (${r.state}). Matched items were added as evidence.${remit}`);
       setPreview(null); load();
     } catch (e) { toast(errorText(e), true); }
     setBusy(false);
