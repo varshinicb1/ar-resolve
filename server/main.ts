@@ -4,6 +4,7 @@ import { openDb } from './db/db.ts';
 import { seed } from './services/seed.ts';
 import { createApp, DEFAULT_STATIC } from './http/app.ts';
 import { startWorker } from './services/outbox.ts';
+import { startVoiceWorker } from './services/voice/engine.ts';
 
 const dbPath = process.env.AR_DB ?? 'data/ar-resolve.db';
 const port = Number(process.env.PORT ?? 8080);
@@ -18,3 +19,4 @@ server.listen(port, () => {
   console.log(`database: ${dbPath}; embedded outbox worker: ${embeddedWorker ? 'on' : 'off'}`);
 });
 if (embeddedWorker) startWorker(db, Number(process.env.AR_WORKER_INTERVAL_MS ?? 1500));
+if (embeddedWorker) startVoiceWorker(db);

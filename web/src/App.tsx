@@ -10,6 +10,7 @@ import { Operations } from './pages/Operations.tsx';
 import { Knowledge } from './pages/Knowledge.tsx';
 import { Followups } from './pages/Followups.tsx';
 import { Insights } from './pages/Insights.tsx';
+import { Calls } from './pages/Calls.tsx';
 
 export interface ScopeOption { tenantId: string; tenantName: string; clientId: string; clientName: string; roles: string[] }
 export interface Me { userId: string; displayName: string; scopes: ScopeOption[]; environment: string; liveActions: string }
@@ -83,6 +84,7 @@ export function App() {
   const nav: [string, string, number | null][] = [
     ['queue', 'Work queue', counts.all ?? null],
     ['reviews', 'Reviews', counts.awaiting_review ?? null],
+    ['calls', 'Calls', null],
     ['import', 'Import', null],
     ['rules', 'Rule studio', null],
     ['followups', 'Follow-ups', null],
@@ -121,7 +123,7 @@ export function App() {
             <button onClick={() => { session.clear(); setMe(null); }}>Sign out</button>
           </div>
         </div>
-        <div className="envbar">Synthetic environment. Accounts, references and payer responses are invented. Calls are pre-scripted mocks; the payer connector is a simulator.</div>
+        <div className="envbar">Synthetic environment. Accounts, references and payer responses are invented. Calls run against a simulated payer line; the payer connector is a simulator.</div>
         <main key={scopeKey}>
           {path === 'queue' && <Queue />}
           {path === 'account' && param && <Account accountId={param} onChange={refreshCounts} />}
@@ -132,6 +134,7 @@ export function App() {
           {path === 'knowledge' && <Knowledge key={param ?? ''} param={param} />}
           {path === 'followups' && <Followups roles={roles} />}
           {path === 'insights' && <Insights roles={roles} />}
+          {path === 'calls' && <Calls />}
         </main>
       </div>
       <Toaster />
