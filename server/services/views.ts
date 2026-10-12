@@ -9,9 +9,10 @@ import { currentFacts, factHistory } from './facts.ts';
 import { approvalChecks, type ActionRow } from './review.ts';
 import { activePause } from './controls.ts';
 import { getAccountRow, priorityOf } from './workflow.ts';
+import { accountOperationsExport } from './writeback.ts';
 
 function actions(db: Db, scope: Scope, accountId: string) {
-  return all<ActionRow>(db, 'SELECT * FROM proposed_actions WHERE tenant_id=? AND client_id=? AND account_id=? ORDER BY created_at DESC, rowid DESC', scope.tenantId, scope.clientId, accountId);
+  return all<ActionRow>(db, "SELECT * FROM proposed_actions WHERE tenant_id=? AND client_id=? AND account_id=? AND kind <> 'note_writeback' ORDER BY created_at DESC, rowid DESC", scope.tenantId, scope.clientId, accountId);
 }
 
 export function accountView(db: Db, scope: Scope, accountId: string) {
@@ -84,6 +85,7 @@ export function auditExport(db: Db, scope: Scope, accountId: string) {
     interactions: view.interactions,
     events: accountEvents(db, scope.tenantId, scope.clientId, accountId),
     auditChain: verifyChain(db, scope.tenantId),
+    operations: accountOperationsExport(db, scope, accountId), // write-backs, commitments, follow-ups, outcome ledger
   };
   return { ...packet, packetSha256: hashJson(packet) };
 }

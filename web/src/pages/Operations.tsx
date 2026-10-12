@@ -3,6 +3,7 @@ import { api, errorText, when } from '../api.ts';
 import { Heading, Panel, StateBadge, toast } from '../ui.tsx';
 import { OUTCOME_LABELS, type Ded01Outcome } from '../../../shared/rules/ded01.ts';
 import { go } from '../App.tsx';
+import { OpsControls } from './OpsControls.tsx';
 
 interface Ops {
   outbox: { action_id: string; idempotency_key: string; connector: string; state: string; attempts: number; external_reference: string | null; last_error: string | null; updated_at: string; kind: string; account_id: string; external_id: string }[];
@@ -77,6 +78,7 @@ export function Operations({ roles }: { roles: string[] }) {
           </Panel>
         </div>
       </div>
+      <OpsControls />
     </>
   );
 }

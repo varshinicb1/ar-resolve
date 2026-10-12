@@ -3,6 +3,7 @@ import { api, money, when, errorText, type ApiError } from '../api.ts';
 import { Heading, Overlay, Panel, StateBadge, StatusBadge, toast } from '../ui.tsx';
 import { OUTCOME_LABELS, reasonLabel, type Ded01Outcome } from '../../../shared/rules/ded01.ts';
 import { DED01_V1 } from '../../../shared/rules/catalog.ts';
+import { AccountOps, OPS_EVENT_TEXT } from './AccountOps.tsx';
 
 interface Fact { key: string; label: string; status: string; value: unknown; unit: string | null; version: number; evidenceId: string | null; locator: any; candidates: { value: unknown; evidenceId: string; sourceClass: string; locator: any; observedAt: string }[]; acceptedStatuses: string[] }
 interface Evidence { evidenceId: string; kind: string; title: string; source: string; content: any; sha256: string; observedAt: string; effectiveAt: string | null; createdBy: string }
@@ -41,6 +42,7 @@ const EVENT_TEXT: Record<string, string> = {
   action_receipt_received: 'Receipt recorded', dispatch_blocked: 'Dispatch blocked by executor re-check', payer_confirmation_received: 'Payer confirmed receipt (not payment)',
   audit_exported: 'Audit packet exported', dispatch_failed: 'Dispatch failed',
 };
+Object.assign(EVENT_TEXT, OPS_EVENT_TEXT);
 
 export function Account({ accountId, onChange }: { accountId: string; onChange: () => void }) {
   const [v, setV] = useState<View | null>(null);
@@ -181,6 +183,7 @@ export function Account({ accountId, onChange }: { accountId: string; onChange: 
               ))}</tbody></table>
             </Panel>
           )}
+          <AccountOps accountId={accountId} revision={a.revision} currentAction={current} canReview={v.permissions.review} evidence={v.evidence} onChange={load} />
         </div>
       </div>
 

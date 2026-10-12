@@ -8,6 +8,8 @@ import { Import } from './pages/Import.tsx';
 import { Rules } from './pages/Rules.tsx';
 import { Operations } from './pages/Operations.tsx';
 import { Knowledge } from './pages/Knowledge.tsx';
+import { Followups } from './pages/Followups.tsx';
+import { Insights } from './pages/Insights.tsx';
 
 export interface ScopeOption { tenantId: string; tenantName: string; clientId: string; clientName: string; roles: string[] }
 export interface Me { userId: string; displayName: string; scopes: ScopeOption[]; environment: string; liveActions: string }
@@ -83,6 +85,8 @@ export function App() {
     ['reviews', 'Reviews', counts.awaiting_review ?? null],
     ['import', 'Import', null],
     ['rules', 'Rule studio', null],
+    ['followups', 'Follow-ups', null],
+    ['insights', 'Insights', null],
     ['operations', 'Operations', counts.receipt_uncertain || null],
     ['knowledge', 'Knowledge', null],
   ];
@@ -126,6 +130,8 @@ export function App() {
           {path === 'rules' && <Rules />}
           {path === 'operations' && <Operations roles={roles} />}
           {path === 'knowledge' && <Knowledge key={param ?? ''} param={param} />}
+          {path === 'followups' && <Followups roles={roles} />}
+          {path === 'insights' && <Insights roles={roles} />}
         </main>
       </div>
       <Toaster />

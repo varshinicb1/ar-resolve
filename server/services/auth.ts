@@ -14,6 +14,10 @@ export const PERMISSIONS = {
   review: ['reviewer'],
   operate: ['supervisor'],
   audit_export: ['auditor', 'supervisor'],
+  // Note write-back is a separate action class from financial requests (build pack doc 07).
+  propose_writeback: ['specialist', 'reviewer'],
+  approve_writeback: ['reviewer', 'supervisor'],
+  manage_followups: ['specialist', 'reviewer', 'supervisor'],
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Permission = keyof typeof PERMISSIONS;
@@ -85,4 +89,11 @@ export function requirePerm(scope: Scope, perm: Permission): void {
 // Re-check used by the executor at dispatch time: the approver must still hold review rights.
 export function userHasRole(db: Db, userId: string, tenantId: string, clientId: string, role: Role): boolean {
   return !!one(db, 'SELECT 1 FROM grants WHERE user_id = ? AND tenant_id = ? AND client_id = ? AND role = ?', userId, tenantId, clientId, role);
+}
+
+// Roles that may have approved an action of this kind; the executor re-checks the
+// approver still holds one of them at dispatch time.
+export function approverStillAuthorized(db: Db, userId: string, tenantId: string, clientId: string, kind: string): boolean {
+  const roles: readonly Role[] = kind === 'note_writeback' ? PERMISSIONS.approve_writeback : PERMISSIONS.review;
+  return roles.some((r) => userHasRole(db, userId, tenantId, clientId, r));
 }

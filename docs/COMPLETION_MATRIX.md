@@ -51,3 +51,27 @@ Status values: **Implemented** (works and tested on synthetic data), **Mocked** 
 | KB | `npm run kb:verify` integrity check | Implemented | kb:verify tamper test |
 | KB | Knowledge UI (search, explain, playbooks, articles, glossary, code lists, payers, sources) | Implemented | Nav "Knowledge"; Playwright smoke at 1400px and 390px |
 | KB | Licensed X12 full-text import | Blocked | Needs an X12 licence |
+## Operations workstream: follow-up, reconciliation, write-back, controls, analytics (ADR 0040)
+
+| Area | Requirement | Status | Evidence |
+| --- | --- | --- | --- |
+| FR13 | Versioned business calendars; most specific (payer/client/tenant/global) wins | Implemented | tests/followups.test.ts "business-day math" |
+| FR13 | US federal holidays 2026-2027 from OPM (retrieved 2026-10-12), status reference | Implemented | `server/services/calendar.ts` |
+| FR13 | Real payer calendars | Blocked | No payer calendar supplied; Demo Payer A calendar is synthetic |
+| FR13 | Follow-up only from a captured commitment (value, unit, basis, evidence locator); else labelled policy interval | Implemented | "follow-up from a captured payer commitment", "no commitment" tests |
+| FR13 | Due / overdue / upcoming / snoozed queue; snooze with reason; completion codes; worker tick emits followup_due | Implemented | "worker tick moves follow-ups" test; Follow-ups page |
+| FR14 | `RemittanceLine` contract; line-level matching by claim + payer within scope; unmatched/ambiguous kept | Implemented (synthetic input) | tests/outcomes.test.ts |
+| FR14 | 835 parsing and real cash feeds | Blocked | Integrations workstream parser feeds `RemittanceLine`; real feeds need a design partner |
+| FR14 | Promise / accepted request / adjudication / cash kept apart in an append-only, hash-chained ledger; auditor export | Implemented | "outcome ledger is append-only" test |
+| FR14 | Versioned attribution rule (ATTR01 v1, draft) with explicit methodology | Implemented (draft) | Customer-agreed methodology Blocked |
+| FR14 | Contradictory outcome reopens the account (unchanged after request, unfavourable change, reversal, cash mismatch) | Implemented | "contradictions reopen the account" test |
+| FR12 | Note write-back: own permissions, destination preview, hash + revision + PM record version binding, drafter cannot approve | Implemented | tests/writeback.test.ts |
+| FR12 | Read-back verification; writeback_uncertain until read-back matches; never success without read-back | Implemented | "read-back mismatch stays writeback_uncertain" test |
+| FR12 | Edited notes keep original draft, edits, editor and approver | Implemented | "edited notes keep the original draft" test |
+| FR12 | PM/EHR target | Mocked | `server/connectors/sim-pm.ts` simulator; real PM write-back Blocked (no system access) |
+| FR16 | Payer and workflow pauses (client supervisors); pending dispatches held with reason | Implemented | tests/controls-analytics.test.ts |
+| FR16 | Resume releases held rows only after re-check (hash, revision, approver role, expiry, other pauses) | Implemented | "resume re-check blocks" test |
+| FR16 | Tenant and global pause from the UI; controlled cancellation of active calls | Not started | Platform operation; no live calls exist |
+| Analytics | 15 doc 03 events, append-only, opaque ids and allow-listed codes only | Implemented | "analytics events use opaque ids" test |
+| KPIs | Touches, review burden, abstention, time to proposal, approval latency, dispatch success, uncertain rate, follow-up adherence, outcomes by type, reopened rate, identity blocks, with definitions | Implemented (synthetic activity) | Insights page; KPI test |
+| Economics | Capacity/unit-economics calculator reproducing build pack calculate.py; inputs labelled assumptions | Implemented | KPI test reproduces economics-results.csv |

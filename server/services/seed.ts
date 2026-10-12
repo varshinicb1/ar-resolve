@@ -2,6 +2,7 @@
 import { type Db, one, run, tx } from '../db/db.ts';
 import { cohort } from '../connectors/synthetic-source.ts';
 import { seedRules } from './rules.ts';
+import { seedOperations } from './ops-seed.ts';
 
 export function seed(db: Db): void {
   tx(db, () => {
@@ -19,5 +20,6 @@ export function seed(db: Db): void {
       }
     }
     seedRules(db);
+    seedOperations(db); // calendars, review-interval policies, attribution rule
   });
 }

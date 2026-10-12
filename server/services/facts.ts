@@ -5,6 +5,7 @@ import { type Db, all, one, run } from '../db/db.ts';
 import { canonicalJson, nowIso } from '../util.ts';
 import type { FactStatus } from '../../shared/rules/catalog.ts';
 import type { Scope } from './auth.ts';
+import { emitConflicts } from './analytics.ts';
 
 export const FACT_KEYS = [
   'identityVerified', 'planDesign', 'claimReference', 'adjustmentGroup', 'allowedCents', 'appliedCents',
@@ -124,5 +125,6 @@ export function resolveFacts(db: Db, scope: Scope, accountId: string): { changed
       r.value === null ? null : JSON.stringify(r.value), unit, r.status, r.evidenceId, r.locator ? canonicalJson(r.locator) : null,
       canonicalJson(r.candidates), revision, nowIso());
   }
+  emitConflicts(db, scope, accountId, changed);
   return { changed: changed.map((c) => c.factKey), revision };
 }
