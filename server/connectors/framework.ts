@@ -10,6 +10,7 @@ import { AppError, canonicalJson, conflict, invalid, newId, notFound, now, nowIs
 import { audit } from '../services/audit.ts';
 import type { Scope } from '../services/auth.ts';
 import { LiveExecutionDisabled } from './executors.ts';
+import { phiLiveReasons } from '../services/governance.ts';
 
 export const ENVIRONMENT_FOR_GATE = (process.env.AR_ENVIRONMENT ?? 'synthetic') as 'synthetic' | 'shadow' | 'assisted_live';
 
@@ -265,6 +266,7 @@ export function liveGate(db: Db, scope: Scope, connectorId: string): string[] {
   if (!ob) reasons.push('No connector onboarding record exists.');
   else if (ob.completeness.missing.length) reasons.push(`Onboarding record incomplete: ${ob.completeness.missing.join(', ')}.`);
   if (ENVIRONMENT_FOR_GATE === 'synthetic') reasons.push('This environment is synthetic. Live integrations cannot be enabled here (docs/08).');
+  reasons.push(...phiLiveReasons(db, scope, connectorId)); // PHI gate and vendor BAA register (ADR 0070)
   return reasons;
 }
 
@@ -358,6 +360,7 @@ function finish(db: Db, scope: Scope, connectorId: string, req: ConnectorRequest
     const n = after.consecutive_failures + 1;
     const open = n >= CIRCUIT_THRESHOLD || after.state === 'half_open';
     setCircuit(db, scope, connectorId, open ? 'open' : 'closed', n, open ? nowIso() : null);
+    if (open && after.state !== 'open') audit(db, { tenantId: scope.tenantId, clientId: scope.clientId, actorId: scope.userId, objectType: 'connector', objectId: connectorId, eventType: 'connector_circuit_opened', details: { failures: n } }); // notification hook (ADR 0070)
   } else if (after.state !== 'closed' || after.consecutive_failures) setCircuit(db, scope, connectorId, 'closed', 0, null);
   return recordEvent(db, scope, connectorId, req, {
     outcome: r.outcome, externalRefs: r.externalRefs ?? {}, evidenceLocator: r.evidenceLocator ?? null, sourceTime: r.sourceTime ?? null, receivedTime: nowIso(),

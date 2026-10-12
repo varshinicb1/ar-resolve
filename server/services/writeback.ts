@@ -7,6 +7,7 @@
 import { type Db, all, one, run, tx } from '../db/db.ts';
 import { canonicalJson, conflict, forbidden, hashJson, invalid, newId, notFound, now, nowIso, sha256, AppError } from '../util.ts';
 import { audit } from './audit.ts';
+import { open as openSealed, seal } from './phi.ts';
 import { can, requirePerm, type Scope } from './auth.ts';
 import { getAccountRow, PROPOSAL_TTL_HOURS } from './workflow.ts';
 import { reconcile, type OutboxRow } from './outbox.ts';
@@ -73,8 +74,8 @@ export function proposeWriteback(db: Db, scope: Scope, accountId: string, body: 
     }
     run(db, 'INSERT INTO proposed_actions VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', scope.tenantId, scope.clientId, actionId, accountId, src.run_id, a.revision,
       'note_writeback', 'administrative_note', 'sim_pm', canonicalJson(payload), hashJson(payload), text, 'awaiting_review', expires, scope.userId, nowIso(), nowIso());
-    run(db, 'INSERT INTO note_writebacks VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)', scope.tenantId, scope.clientId, actionId, accountId, src.action_id, original, sha256(original),
-      text, sha256(text), edited ? 1 : 0, edited ? editReason : null, edited ? scope.userId : null, scope.userId, nowIso());
+    run(db, 'INSERT INTO note_writebacks VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)', scope.tenantId, scope.clientId, actionId, accountId, src.action_id, seal(original), sha256(original),
+      seal(text), sha256(text), edited ? 1 : 0, edited ? editReason : null, edited ? scope.userId : null, scope.userId, nowIso());
     audit(db, { tenantId: scope.tenantId, clientId: scope.clientId, actorId: scope.userId, objectType: 'action', objectId: actionId, accountId,
       eventType: 'writeback_proposed', details: { payloadSha256: hashJson(payload), pmRecordId: rec.pmRecordId, recordVersion: rec.recordVersion, field: FIELD, edited, editReason: edited ? editReason : null, expectedRevision: a.revision } });
     return { actionId, payloadSha256: hashJson(payload), accountRevision: a.revision, edited };
@@ -156,7 +157,8 @@ export function listWritebacks(db: Db, scope: Scope, accountId: string) {
     `SELECT p.*, w.original_draft, w.final_text, w.edited, w.edit_reason, w.edited_by, w.source_action_id FROM proposed_actions p
      JOIN note_writebacks w ON w.tenant_id=p.tenant_id AND w.client_id=p.client_id AND w.action_id=p.action_id
      WHERE p.tenant_id=? AND p.client_id=? AND p.account_id=? ORDER BY p.created_at DESC, p.rowid DESC`, scope.tenantId, scope.clientId, accountId);
-  return rows.map((r) => {
+  return rows.map((raw) => {
+    const r = { ...raw, original_draft: openSealed(raw.original_draft), final_text: openSealed(raw.final_text) };
     const outbox = one<{ state: string; attempts: number; external_reference: string | null; last_error: string | null; idempotency_key: string; held_at: string | null; hold_reason: string | null; receipt_evidence_id: string | null }>(db,
       'SELECT state, attempts, external_reference, last_error, idempotency_key, held_at, hold_reason, receipt_evidence_id FROM action_outbox WHERE tenant_id=? AND client_id=? AND action_id=?', scope.tenantId, scope.clientId, r.action_id);
     const decisions = all<{ decision: string; actor_id: string; rationale: string; created_at: string }>(db,

@@ -5,6 +5,15 @@ import { seed } from './services/seed.ts';
 import { createApp, DEFAULT_STATIC } from './http/app.ts';
 import { startWorker } from './services/outbox.ts';
 import { startVoiceWorker } from './services/voice/engine.ts';
+import { startupProblems } from './services/governance.ts';
+import { startNotificationWorker } from './services/notifications.ts';
+
+// PHI gate (ADR 0070): AR_PHI_MODE=on refuses to start unless the deployment-level safeguards exist.
+const phiProblems = startupProblems();
+if (phiProblems.length) {
+  console.error(`Refusing to start: ${phiProblems.join('; ')}`);
+  process.exit(78);
+}
 
 const dbPath = process.env.AR_DB ?? 'data/ar-resolve.db';
 const port = Number(process.env.PORT ?? 8080);
@@ -20,3 +29,4 @@ server.listen(port, () => {
 });
 if (embeddedWorker) startWorker(db, Number(process.env.AR_WORKER_INTERVAL_MS ?? 1500));
 if (embeddedWorker) startVoiceWorker(db);
+if (embeddedWorker) startNotificationWorker(db, Number(process.env.AR_NOTIFY_INTERVAL_MS ?? 5000));

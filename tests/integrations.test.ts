@@ -294,7 +294,11 @@ test('live adapters refuse; the enable gate needs authorization, a complete onbo
     assert.equal(full.body.completeness.ratio, 1);
     const gate2 = await sam.post('/api/integrations/connectors/availity/mode', { mode: 'live' });
     assert.equal(gate2.status, 409);
-    assert.deepEqual(gate2.body.error.details.reasons, ['This environment is synthetic. Live integrations cannot be enabled here (docs/08).']);
+    // ADR 0070: the PHI gate (vendor/BAA register, key, hosting, AR_PHI_MODE) adds its own reasons.
+    const [envReason, ...phiReasons] = gate2.body.error.details.reasons;
+    assert.equal(envReason, 'This environment is synthetic. Live integrations cannot be enabled here (docs/08).');
+    assert.ok(phiReasons.length > 0 && phiReasons.every((r: string) => r.startsWith('PHI gate: ')), JSON.stringify(phiReasons));
+    assert.ok(phiReasons.some((r: string) => /availity/.test(r)), 'availity needs a BAA in the register');
     const detail = (await sam.get('/api/integrations/connectors/availity')).body;
     assert.equal(detail.mode, 'disabled_live');
     assert.equal(detail.health.status, 'disabled');

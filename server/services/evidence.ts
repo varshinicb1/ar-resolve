@@ -4,6 +4,7 @@
 import { type Db, all, one, run } from '../db/db.ts';
 import { canonicalJson, invalid, newId, nowIso, sha256 } from '../util.ts';
 import { audit } from './audit.ts';
+import { open as openSealed, seal } from './phi.ts';
 import type { Scope } from './auth.ts';
 import { extendedFact, extractEobSelection, extractExtended, validateFactValue } from '../../shared/rules/fact-catalog.ts';
 import { integrationObservations, isIntegrationKind, type IntegrationKind } from '../connectors/observations.ts';
@@ -123,7 +124,7 @@ export function addEvidence(db: Db, scope: Scope, e: AddEvidenceInput): { eviden
   const evidenceId = newId('ev');
   const observedAt = nowIso();
   run(db, 'INSERT INTO evidence VALUES (?,?,?,?,?,?,?,?,?,?,?,?)', scope.tenantId, scope.clientId, e.accountId, evidenceId,
-    e.kind, e.title, e.source, body, hash, observedAt, e.effectiveAt ?? null, scope.userId);
+    e.kind, e.title, e.source, seal(body), hash, observedAt, e.effectiveAt ?? null, scope.userId); // sealed at rest when AR_PHI_KEY is set (ADR 0070); hash is over the plaintext
   const obs = extractObservations(e.kind, e.content);
   for (const o of obs) {
     run(db, 'INSERT INTO observations VALUES (?,?,?,?,?,?,?,?,?,?,?)', scope.tenantId, scope.clientId, e.accountId, newId('ob'),
@@ -137,7 +138,7 @@ export function addEvidence(db: Db, scope: Scope, e: AddEvidenceInput): { eviden
 export function listEvidence(db: Db, scope: Scope, accountId: string) {
   return all<EvidenceRow>(db, 'SELECT * FROM evidence WHERE tenant_id=? AND client_id=? AND account_id=? ORDER BY observed_at, rowid',
     scope.tenantId, scope.clientId, accountId).map((r) => ({
-    evidenceId: r.evidence_id, kind: r.kind, title: r.title, source: r.source, content: JSON.parse(r.content),
+    evidenceId: r.evidence_id, kind: r.kind, title: r.title, source: r.source, content: JSON.parse(openSealed(r.content)),
     sha256: r.sha256, observedAt: r.observed_at, effectiveAt: r.effective_at, createdBy: r.created_by,
   }));
 }

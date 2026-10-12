@@ -4,6 +4,7 @@ import { type Db, all, one } from '../../db/db.ts';
 import { can, requirePerm, type Scope } from '../auth.ts';
 import { getAccountRow } from '../workflow.ts';
 import { SIM_PAYER_LINES, SIM_SCRIPTS } from '../../connectors/sim-voice.ts';
+import { open as openText } from '../phi.ts';
 import { LIVE_TELEPHONY_CONFIG, liveTelephony, TELEPHONY_PROCUREMENT_CHECKLIST, TELEPHONY_PROCUREMENT_SOURCE } from '../../connectors/live-voice.ts';
 import { ANSWERED_QUESTION, type QuestionPlan } from './plan.ts';
 import { ACTIVE_CALL_STATES, currentPolicy, evaluateGate, listPolicyVersions, policyVersion, POLICY_NOTE } from './policy.ts';
@@ -57,7 +58,7 @@ export function callDetail(db: Db, scope: Scope, callId: string) {
   const a = getAccountRow(db, scope, c.account_id);
   const events = all<{ seq: number; kind: string; speaker: string | null; text: string | null; question_id: string | null; sim_at_ms: number; data: string; created_at: string }>(db,
     'SELECT seq, kind, speaker, text, question_id, sim_at_ms, data, created_at FROM voice_call_events WHERE tenant_id=? AND client_id=? AND call_id=? ORDER BY seq', scope.tenantId, scope.clientId, callId)
-    .map((e) => ({ seq: e.seq, kind: e.kind, speaker: e.speaker, text: e.text, questionId: e.question_id, atMs: e.sim_at_ms, data: JSON.parse(e.data), createdAt: e.created_at }));
+    .map((e) => ({ seq: e.seq, kind: e.kind, speaker: e.speaker, text: e.text === null ? null : openText(e.text), questionId: e.question_id, atMs: e.sim_at_ms, data: JSON.parse(e.data), createdAt: e.created_at }));
   const answers = all<{ answer_id: string; question_id: string; answer_key: string; fact_key: string | null; value: string | null; unit: string | null; status: string; turn_seqs: string; read_back_seq: number | null; flags: string }>(db,
     'SELECT * FROM voice_answers WHERE tenant_id=? AND client_id=? AND call_id=? ORDER BY rowid', scope.tenantId, scope.clientId, callId)
     .map((x) => ({ answerId: x.answer_id, questionId: x.question_id, key: x.answer_key, factKey: x.fact_key, value: x.value === null ? null : JSON.parse(x.value), unit: x.unit,
@@ -72,7 +73,7 @@ export function callDetail(db: Db, scope: Scope, callId: string) {
     events,
     flags: events.filter((e) => e.kind === 'flag').map((e) => ({ seq: e.seq, code: e.data.code as string, text: e.text, turnSeq: (e.data.turnSeq ?? null) as number | null })),
     answers,
-    handoff: c.handoff ? JSON.parse(c.handoff) : null,
+    handoff: c.handoff ? JSON.parse(openText(c.handoff)) : null,
     metrics: metrics(db, c),
     permissions: { control: can(scope, 'investigate'), cancel: can(scope, 'investigate') || can(scope, 'operate') },
   };
@@ -107,7 +108,7 @@ export function voiceConfig(db: Db, scope: Scope) {
       placedLastHour: one<{ n: number }>(db, 'SELECT COUNT(*) n FROM voice_calls WHERE tenant_id=? AND payer_id=? AND created_at >= ?', scope.tenantId, l.payerId, lastHour)!.n,
     })),
     scripts: Object.values(SIM_SCRIPTS).map((s) => ({ id: s.id, label: s.label, adversarial: s.adversarial, description: s.description })),
-    liveAdapter: { name: liveTelephony.name, enabled: false, config: LIVE_TELEPHONY_CONFIG, status: 'Disabled: throws LiveExecutionDisabled' },
+    liveAdapter: { name: liveTelephony.name, enabled: false, config: LIVE_TELEPHONY_CONFIG, status: 'Disabled: throws LiveExecutionDisabled', implementation: 'Twilio Programmable Voice + Conversation Relay (ADR 0070), refused by the PHI gate and the live gate' },
     procurement: { ...TELEPHONY_PROCUREMENT_SOURCE, items: TELEPHONY_PROCUREMENT_CHECKLIST },
     permissions: { editPolicy: can(scope, 'operate') },
   };

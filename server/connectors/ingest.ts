@@ -4,6 +4,7 @@
 // blocked and reported; nothing is attached to an account by guesswork.
 import { type Db, all, one, run, tx } from '../db/db.ts';
 import { AppError, conflict, invalid, newId, nowIso, sha256 } from '../util.ts';
+import { assertMayIngest, isSyntheticInterchange } from '../services/governance.ts';
 import { audit } from '../services/audit.ts';
 import { requirePerm, type Scope } from '../services/auth.ts';
 import { addEvidence } from '../services/evidence.ts';
@@ -92,8 +93,10 @@ export function buildPreview(db: Db, scope: Scope, filename: string, raw: string
     if (err instanceof X12Error) return { valid: false, rawSha256, filename, error: { code: err.code, message: err.message, issues: err.issues } };
     throw err;
   }
-  const options = opts ?? optionsFor(db, scope);
   const x = parsed.interchange;
+  // PHI gate (ADR 0070): a production interchange (ISA15=P) is refused unless the deployment is PHI-ready.
+  assertMayIngest(db, scope, { source: 'edi', synthetic: isSyntheticInterchange(x.usage), why: `ISA15 usage indicator ${x.usage}` });
+  const options = opts ?? optionsFor(db, scope);
   const items: PreviewItem[] = [];
   const fileLevel: Record<string, unknown>[] = [];
   const base = { file: rawSha256.slice(0, 16), interchange: x.control };
