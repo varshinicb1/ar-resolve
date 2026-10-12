@@ -1,10 +1,12 @@
 import { DatabaseSync } from 'node:sqlite';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 export type Db = DatabaseSync;
 
-const MIGRATIONS = ['001_init.sql'];
+// Migrations are applied in filename order. Workstreams own distinct number ranges
+// (001 core, 010 knowledge base, 020 rules, 030 integrations, 040 operations, 050 voice).
+const MIGRATIONS = readdirSync(fileURLToPath(new URL('.', import.meta.url))).filter((f) => /^\d{3}_[\w-]+\.sql$/.test(f)).sort();
 
 export function openDb(path: string): Db {
   const db = new DatabaseSync(path);

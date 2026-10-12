@@ -15,11 +15,20 @@ import { cohort } from '../connectors/synthetic-source.ts';
 import { loadRule } from '../services/rules.ts';
 import { verifyChain } from '../services/audit.ts';
 import { OUTCOME_LABELS } from '../../shared/rules/ded01.ts';
+import { MODULES } from './modules.ts';
 
 export const ENVIRONMENT = 'synthetic' as const;
 
-interface Ctx { req: IncomingMessage; params: Record<string, string>; query: URLSearchParams; raw: string; body: any }
-type Handler = (ctx: Ctx) => unknown;
+export interface Ctx { req: IncomingMessage; params: Record<string, string>; query: URLSearchParams; raw: string; body: any }
+export type Handler = (ctx: Ctx) => unknown;
+
+// Feature modules register their routes through this surface (see server/http/modules.ts).
+export interface ModuleApi {
+  db: Db;
+  route: (method: string, path: string, handler: Handler) => void;
+  scoped: (ctx: Ctx) => Scope;
+  header: (ctx: Ctx, k: string) => string | undefined;
+}
 
 const MAX_BODY = 1_000_000;
 
@@ -157,6 +166,8 @@ export function createApp(db: Db, opts: { staticDir?: string } = {}): Server {
 
   // ---- signed webhook from the simulated payer (no session; signature authenticates)
   route('POST', '/api/webhooks/sim-payer', (ctx) => handlePayerWebhook(db, ctx.raw, header(ctx, 'x-signature'), header(ctx, 'x-timestamp')));
+
+  for (const register of MODULES) register({ db, route, scoped, header });
 
   const staticDir = opts.staticDir;
   return createServer(async (req, res) => {
