@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, errorText, when } from '../api.ts';
 import { Heading, Panel, StateBadge, toast } from '../ui.tsx';
-import { OUTCOME_LABELS, type Ded01Outcome } from '../../../shared/rules/ded01.ts';
+import { outcomeLabel } from '../../../shared/rules/registry.ts';
 import { go } from '../App.tsx';
 import { OpsControls } from './OpsControls.tsx';
 
@@ -43,7 +43,7 @@ export function Operations({ roles }: { roles: string[] }) {
                 <tbody>{ops.outbox.map((o) => (
                   <tr key={o.action_id}>
                     <td><button className="link" onClick={() => go(`/account/${o.account_id}`)}>{o.external_id}</button></td>
-                    <td className="small ops-action">{OUTCOME_LABELS[o.kind as Ded01Outcome]}<div className="muted">{o.connector}</div></td>
+                    <td className="small ops-action">{outcomeLabel(o.kind)}<div className="muted">{o.connector}</div></td>
                     <td><StateBadge state={o.state} />{o.last_error && <div className="small muted">{o.last_error}</div>}</td>
                     <td className="r num">{o.attempts}</td>
                     <td className="mono">{o.external_reference ?? '—'}</td>

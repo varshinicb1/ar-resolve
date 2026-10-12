@@ -104,7 +104,7 @@ export function App() {
             </a>
           ))}
         </nav>
-        <div className="side-foot">PHASE 0 · SYNTHETIC<br />No PHI · Live executor disabled<br />Draft rule DED01 v1</div>
+        <div className="side-foot">PHASE 0 · SYNTHETIC<br />No PHI · Live executor disabled<br />Scenario packs: drafts run (synthetic only)</div>
       </aside>
       <div>
         <div className="top">
@@ -129,7 +129,7 @@ export function App() {
           {path === 'account' && param && <Account accountId={param} onChange={refreshCounts} />}
           {path === 'reviews' && <Reviews />}
           {path === 'import' && <Import roles={roles} />}
-          {path === 'rules' && <Rules />}
+          {path === 'rules' && <Rules ruleId={param} />}
           {path === 'operations' && <Operations roles={roles} />}
           {path === 'knowledge' && <Knowledge key={param ?? ''} param={param} />}
           {path === 'followups' && <Followups roles={roles} />}

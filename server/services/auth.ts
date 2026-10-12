@@ -4,7 +4,7 @@
 import { type Db, all, one, run } from '../db/db.ts';
 import { AppError, forbidden, newToken, nowIso, sha256, now } from '../util.ts';
 
-export type Role = 'specialist' | 'reviewer' | 'supervisor' | 'auditor';
+export type Role = 'specialist' | 'reviewer' | 'supervisor' | 'auditor' | 'rule_approver';
 
 export const PERMISSIONS = {
   view: ['specialist', 'reviewer', 'supervisor', 'auditor'],
@@ -18,6 +18,8 @@ export const PERMISSIONS = {
   propose_writeback: ['specialist', 'reviewer'],
   approve_writeback: ['reviewer', 'supervisor'],
   manage_followups: ['specialist', 'reviewer', 'supervisor'],
+  rule_author: ['reviewer', 'supervisor'],
+  rule_approve: ['rule_approver'],
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Permission = keyof typeof PERMISSIONS;
@@ -65,6 +67,7 @@ export function listScopes(db: Db, userId: string) {
     if (!map.has(key)) map.set(key, { tenantId: r.tenant_id, tenantName: r.tenant_name, clientId: r.client_id, clientName: r.client_name, roles: [] });
     map.get(key)!.roles.push(r.role);
   }
+  for (const x of extraRoles(db, userId)) map.get(`${x.tenant_id}/${x.client_id}`)?.roles.push(x.role);
   return [...map.values()];
 }
 
@@ -75,7 +78,14 @@ export function resolveScope(db: Db, ident: Identity, tenantId: string | undefin
   const roles = all<{ role: Role }>(db, 'SELECT role FROM grants WHERE user_id = ? AND tenant_id = ? AND client_id = ?',
     ident.userId, tenantId, clientId).map((r) => r.role);
   if (!roles.length) throw new AppError(404, 'scope_not_found', 'Scope not found');
+  roles.push(...extraRoles(db, ident.userId).filter((x) => x.tenant_id === tenantId && x.client_id === clientId).map((x) => x.role));
   return { userId: ident.userId, displayName: ident.displayName, tenantId, clientId, roles };
+}
+
+// Roles outside the core grants CHECK list (migration 020). Only add to a scope the
+// user already holds a core grant for.
+function extraRoles(db: Db, userId: string) {
+  return all<{ tenant_id: string; client_id: string; role: Role }>(db, 'SELECT tenant_id, client_id, role FROM extra_role_grants WHERE user_id = ? ORDER BY rowid', userId);
 }
 
 export function can(scope: Scope, perm: Permission): boolean {

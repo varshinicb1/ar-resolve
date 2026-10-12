@@ -170,3 +170,11 @@ button.link { text-align: left; }
 .call-metrics .metric { padding: 10px 12px; }
 .call-metrics .metric strong { font-size: 18px; }
 tr.call-attention td { background: var(--danger-bg); }
+/* Rule studio (scenario packs) workstream */
+.table-wrap { overflow-x: auto; }
+.rs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.rs-form { display: grid; gap: 12px; }
+.rs-form label { display: block; font-size: 13px; margin-bottom: 4px; }
+.rs-form input, .rs-form select, .rs-form textarea { width: 100%; max-width: 100%; box-sizing: border-box; }
+.rs-check { display: flex; align-items: center; gap: 6px; }
+.rs-check input { width: auto; }

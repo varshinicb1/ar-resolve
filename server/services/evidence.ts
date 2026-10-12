@@ -5,8 +5,11 @@ import { type Db, all, one, run } from '../db/db.ts';
 import { canonicalJson, invalid, newId, nowIso, sha256 } from '../util.ts';
 import { audit } from './audit.ts';
 import type { Scope } from './auth.ts';
+import { extendedFact, extractEobSelection, extractExtended, validateFactValue } from '../../shared/rules/fact-catalog.ts';
 
-export type EvidenceKind = 'eob' | 'eligibility' | 'clearinghouse_status' | 'pm_posting' | 'call_transcript' | 'reviewer_correction' | 'action_receipt' | 'import_row';
+export type EvidenceKind = 'eob' | 'eligibility' | 'clearinghouse_status' | 'pm_posting' | 'call_transcript' | 'reviewer_correction' | 'action_receipt' | 'import_row'
+  // scenario-pack sources (shared/rules/fact-catalog.ts EXTENDED_EXTRACTORS)
+  | 'claim_status' | 'payer_correspondence' | 'attachment_manifest' | 'claim_history' | 'coverage_record' | 'filing_record' | 'auth_record' | 'clinical_packet' | 'coding_packet';
 export type SourceClass = 'document' | 'structured' | 'transcript' | 'reviewer';
 
 export interface EvidenceRow {
@@ -57,6 +60,7 @@ export function extractObservations(kind: EvidenceKind, content: unknown): Obser
           pick(content, out, 'appliedCents', ['lines', 0, 'adjustments', idx, 'amountCents'], 'document');
         }
       }
+      for (const o of extractEobSelection(content)) out.push({ factKey: o.factKey, value: o.value, unit: null, locator: { path: o.path }, sourceClass: o.sourceClass });
       break;
     }
     case 'eligibility':
@@ -90,6 +94,8 @@ export function extractObservations(kind: EvidenceKind, content: unknown): Obser
       out.push({ factKey: c.factKey, value: c.value, unit: CENTS_KEYS.has(c.factKey) ? 'USD_cents' : null, locator: { path: 'value' }, sourceClass: 'reviewer' });
       break;
     }
+    default:
+      for (const o of extractExtended(kind, content)) out.push({ factKey: o.factKey, value: o.value, unit: null, locator: { path: o.path }, sourceClass: o.sourceClass });
   }
   return out;
 }
@@ -149,6 +155,12 @@ export function validateCorrectionValue(factKey: string, value: unknown): void {
   }
   if (factKey === 'planDesign' || factKey === 'claimReference') {
     if (typeof value !== 'string' || !value.trim()) throw invalid(`${factKey} must be a non-empty string`);
+    return;
+  }
+  const ext = extendedFact(factKey);
+  if (ext?.correctable) {
+    const problem = validateFactValue(ext, value);
+    if (problem) throw invalid(problem);
     return;
   }
   throw invalid(`${factKey} cannot be corrected directly`);

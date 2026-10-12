@@ -16,7 +16,8 @@ export function seed(db: Db): void {
     for (const u of c.users) {
       if (!one(db, 'SELECT 1 FROM users WHERE user_id=?', u.userId)) run(db, 'INSERT INTO users VALUES (?,?)', u.userId, u.displayName);
       for (const [tenantId, clientId, role] of u.grants) {
-        run(db, 'INSERT OR IGNORE INTO grants VALUES (?,?,?,?)', u.userId, tenantId, clientId, role);
+        if (role === 'rule_approver') run(db, 'INSERT OR IGNORE INTO extra_role_grants VALUES (?,?,?,?)', u.userId, tenantId, clientId, role);
+        else run(db, 'INSERT OR IGNORE INTO grants VALUES (?,?,?,?)', u.userId, tenantId, clientId, role);
       }
     }
     seedRules(db);

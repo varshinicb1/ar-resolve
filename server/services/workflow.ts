@@ -3,15 +3,19 @@
 import { type Db, all, one, run, tx } from '../db/db.ts';
 import { AppError, canonicalJson, conflict, hashJson, invalid, newId, notFound, now, nowIso, sha256 } from '../util.ts';
 import { actionSpec, type RuleDefinition } from '../../shared/rules/catalog.ts';
-import { OUTCOME_LABELS, reasonLabel } from '../../shared/rules/ded01.ts';
+import { moduleFor, outcomeLabel } from '../../shared/rules/registry.ts';
+import { labelFor } from '../../shared/rules/types.ts';
 import { audit } from './audit.ts';
 import { requirePerm, type Scope } from './auth.ts';
 import { activePause } from './controls.ts';
 import { addEvidence, validateCorrectionValue } from './evidence.ts';
 import { currentFacts, resolveFacts, type FactRow } from './facts.ts';
-import { evaluateAccount, loadRule, type RuleEvaluation } from './rules.ts';
+import { evaluateAccount, type RuleEvaluation } from './rules.ts';
+import { missingRequiredCount, selectForAccount } from './scenario.ts';
 import { callScript, fetchDocuments } from '../connectors/synthetic-source.ts';
 
+// Phase 0 default pack. Since ADR 0020 the pack and version per account come from
+// scenario selection (./scenario.ts); this constant remains for callers that label DED01.
 export const ACTIVE_RULE = { id: 'DED01', version: 1 };
 export const PROPOSAL_TTL_HOURS = 72;
 
@@ -164,17 +168,18 @@ export function listAccounts(db: Db, scope: Scope, opts: { view?: string; q?: st
   if (states) { where += ` AND state IN (${states.map(() => '?').join(',')})`; params.push(...states); }
   if (opts.q) { where += ' AND (external_id LIKE ? OR claim_reference LIKE ?)'; params.push(`%${opts.q}%`, `%${opts.q}%`); }
   const rows = all<AccountRow>(db, `SELECT * FROM accounts WHERE ${where}`, ...params);
+  const requiredCache = new Map<string, string[]>();
   const items = rows.map((a) => {
     const p = priorityOf(a);
     const action = one<{ kind: string; state: string }>(db, "SELECT kind, state FROM proposed_actions WHERE tenant_id=? AND client_id=? AND account_id=? AND kind <> 'note_writeback' ORDER BY created_at DESC, rowid DESC LIMIT 1", scope.tenantId, scope.clientId, a.account_id);
-    const missing = one<{ n: number }>(db, `SELECT COUNT(*) n FROM facts f WHERE tenant_id=? AND client_id=? AND account_id=? AND status IN ('missing','conflicting')
-      AND version=(SELECT MAX(version) FROM facts g WHERE g.tenant_id=f.tenant_id AND g.client_id=f.client_id AND g.account_id=f.account_id AND g.fact_key=f.fact_key)`, scope.tenantId, scope.clientId, a.account_id)!.n;
+    // Missing is counted against the account's selected pack (ADR 0020).
+    const missing = missingRequiredCount(db, scope, a.account_id, requiredCache);
     const conflicting = one<{ n: number }>(db, `SELECT COUNT(*) n FROM facts f WHERE tenant_id=? AND client_id=? AND account_id=? AND status='conflicting'
       AND version=(SELECT MAX(version) FROM facts g WHERE g.tenant_id=f.tenant_id AND g.client_id=f.client_id AND g.account_id=f.account_id AND g.fact_key=f.fact_key)`, scope.tenantId, scope.clientId, a.account_id)!.n;
     return {
       accountId: a.account_id, externalId: a.external_id, payerId: a.payer_id, claimReference: a.claim_reference, scenario: a.scenario,
       balanceCents: a.balance_cents, serviceDate: a.service_date, state: a.state, revision: a.revision,
-      nextStep: action ? { kind: action.kind, label: OUTCOME_LABELS[action.kind as keyof typeof OUTCOME_LABELS] ?? action.kind, state: action.state } : null,
+      nextStep: action ? { kind: action.kind, label: outcomeLabel(action.kind), state: action.state } : null,
       evidenceState: conflicting ? 'conflicting' : missing ? 'incomplete' : a.state === 'ready' ? 'not_collected' : 'complete',
       priority: p,
     };
@@ -265,7 +270,8 @@ function fmt(c: unknown) {
   return typeof c === 'number' ? `$${(c / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : String(c);
 }
 
-export function draftNote(a: AccountRow, facts: Map<string, FactRow>, ev: RuleEvaluation, evidenceTitles: Map<string, string>): string {
+export function draftNote(a: AccountRow, facts: Map<string, FactRow>, ev: RuleEvaluation, evidenceTitles: Map<string, string>, def?: RuleDefinition): string {
+  const mod = def ? moduleFor(def) : moduleFor({ logicModule: 'ded01.v1' } as RuleDefinition);
   const lines: string[] = [];
   lines.push('SYSTEM-DRAFTED NOTE (deterministic template, synthetic data). Not yet reviewed.');
   lines.push(`Account ${a.external_id}, claim ${a.claim_reference}, payer ${a.payer_id}, DOS ${a.service_date}.`);
@@ -273,52 +279,31 @@ export function draftNote(a: AccountRow, facts: Map<string, FactRow>, ev: RuleEv
     const f = facts.get(k);
     if (!f || f.status === 'missing') return `${label}: MISSING`;
     if (f.status === 'conflicting') return `${label}: CONFLICTING (${f.candidates.map((c) => `${money ? fmt(c.value) : String(c.value)} from ${evidenceTitles.get(c.evidenceId) ?? c.evidenceId}`).join(' vs ')})`;
-    const v = money ? fmt(f.value) : String(f.value);
+    const v = money ? fmt(f.value) : typeof f.value === 'object' ? JSON.stringify(f.value) : String(f.value);
     return `${label}: ${v} [${f.status.toUpperCase()}; ${evidenceTitles.get(f.evidenceId ?? '') ?? 'source'}]`;
   };
   lines.push('Facts:');
-  for (const [k, label, money] of [
-    ['identityVerified', 'Identity matches EOB', false], ['planDesign', 'Plan design', false], ['adjustmentGroup', 'Adjustment group', false],
-    ['allowedCents', 'Allowed (line 1)', true], ['appliedCents', 'Deductible applied (CARC 1)', true], ['limitCents', 'Deductible limit', true],
-    ['metBeforeCents', 'Met before this claim', true], ['secondaryAtDos', 'Secondary at DOS', false], ['crossoverStatus', 'Crossover', false],
-    ['postingVerified', 'PM posting matches EOB', false],
-  ] as [string, string, boolean][]) lines.push(`  - ${show(k, label, money)}`);
-  const c = ev.result.calculation;
-  if (c) lines.push(`Calculation (supported-plan assumption): expected = min(${fmt(c.allowedCents)}, max(0, ${fmt(c.limitCents)} - ${fmt(c.metBeforeCents)})) = ${fmt(c.expectedCents)}; applied ${fmt(c.appliedCents)}; difference ${fmt(c.differenceCents)}.`);
-  lines.push(`Reasons: ${ev.result.reasonCodes.map(reasonLabel).join('; ')}.`);
-  lines.push(`Proposed next step: ${OUTCOME_LABELS[ev.result.outcome]}.`);
+  for (const [k, label, money] of mod.noteFacts) lines.push(`  - ${show(k, label, money)}`);
+  const calc = mod.calculationText?.(ev.result);
+  if (calc) lines.push(calc);
+  lines.push(`Reasons: ${ev.result.reasonCodes.map(mod.reasonLabel).join('; ')}.`);
+  lines.push(`Proposed next step: ${labelFor(def ?? null, mod, ev.result.outcome)}.`);
   lines.push('Action status: proposed only. Nothing has been submitted to the payer. No payment has been received.');
+  for (const extra of def ? mod.noteExtras?.(def, ev.result) ?? [] : []) lines.push(extra);
   if (ev.unusableFacts.length) lines.push(`Unresolved: ${ev.unusableFacts.map((u) => `${u.key} (${u.status})`).join(', ')}.`);
   lines.push(`Rule ${ev.ruleId} ${ev.ruleState} v${ev.ruleVersion} (sha256 ${ev.ruleSha256.slice(0, 12)}).`);
   return lines.join('\n');
 }
 
-function requestFor(kind: string, a: AccountRow, ev: RuleEvaluation) {
-  const c = ev.result.calculation;
-  switch (kind) {
-    case 'clarify_allocation':
-      return { summary: `Ask ${a.payer_id} to explain the deductible allocation on ${a.claim_reference} line 1 and reprocess if it was applied in error.`,
-        expectedDeductibleCents: c?.expectedCents, appliedDeductibleCents: c?.appliedCents, differenceCents: c?.differenceCents,
-        limitCents: c?.limitCents, metBeforeCents: c?.metBeforeCents };
-    case 'verify_crossover':
-      return { summary: `Ask ${a.payer_id} whether ${a.claim_reference} crossed over to the secondary payer, and when.` };
-    case 'secondary_review':
-      return { summary: `Create a worklist task to review staging a secondary claim for ${a.claim_reference}. No claim is submitted by this action.` };
-    case 'patient_responsibility_review':
-      return { summary: `Create a worklist task to review patient responsibility for ${a.claim_reference} against client policy and billing protections. No patient bill is generated.` };
-    case 'monitor_secondary':
-      return { summary: `Create a follow-up task to monitor secondary adjudication for ${a.claim_reference}.` };
-    default:
-      return { summary: kind };
-  }
-}
-
 export function evaluateAndPropose(db: Db, scope: Scope, accountId: string, context: Record<string, unknown>) {
   const a = getAccountRow(db, scope, accountId);
   const facts = currentFacts(db, scope, accountId);
-  const rule = loadRule(db, ACTIVE_RULE.id, ACTIVE_RULE.version);
-  const ev = evaluateAccount(rule, a, facts);
+  // FR05: choose the pack from evidence; FR06: choose the runnable/pinned version.
+  const choice = selectForAccount(db, scope, a, facts);
+  const rule = choice.rule;
+  const ev = evaluateAccount(rule, a, facts, { selection: choice.selection, asOf: nowIso().slice(0, 10) });
   const def: RuleDefinition = rule.definition;
+  const mod = moduleFor(def);
 
   // Evidence changed: open proposals are superseded, and approvals not yet
   // dispatched lose their authority (FR11, docs/04 approval and concurrency).
@@ -341,7 +326,7 @@ export function evaluateAndPropose(db: Db, scope: Scope, accountId: string, cont
   const runState = identityFalse ? 'blocked' : ev.result.abstained ? (outcome === 'collect_evidence' ? 'needs_information' : 'specialist_review') : 'awaiting_review';
   const runId = newId('run');
   run(db, 'INSERT INTO workflow_runs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)', scope.tenantId, scope.clientId, accountId, runId, a.revision,
-    ev.ruleId, ev.ruleVersion, ev.ruleSha256, runState, canonicalJson(ev.result), canonicalJson({ input: ev.input, factRefs: ev.factRefs, scopeMatch: ev.scopeMatch, context }), scope.userId, nowIso());
+    ev.ruleId, ev.ruleVersion, ev.ruleSha256, runState, canonicalJson(ev.result), canonicalJson({ input: ev.input, factRefs: ev.factRefs, scopeMatch: ev.scopeMatch, context, selection: choice.selection, resolution: choice.resolution, scenarioMap: choice.map }), scope.userId, nowIso());
   audit(db, { tenantId: scope.tenantId, clientId: scope.clientId, actorId: scope.userId, objectType: 'run', objectId: runId, accountId,
     eventType: identityFalse ? 'identity_blocked' : ev.result.abstained ? 'run_abstained' : 'proposal_generated',
     details: { outcome, reasonCodes: ev.result.reasonCodes, accountRevision: a.revision, rule: `${ev.ruleId}@${ev.ruleVersion}`, trigger: context.trigger as string } });
@@ -358,7 +343,7 @@ export function evaluateAndPropose(db: Db, scope: Scope, accountId: string, cont
       riskClass: spec.risk,
       account: { tenantId: scope.tenantId, clientId: scope.clientId, accountId, externalId: a.external_id, claimReference: a.claim_reference, payerId: a.payer_id, serviceDate: a.service_date },
       destination: spec.connector === 'sim_payer' ? { connector: 'sim_payer', payerId: a.payer_id, channel: 'simulated payer inquiry API' } : { connector: 'internal_worklist', worklist: `${scope.clientId} AR worklist` },
-      request: requestFor(outcome, a, ev),
+      request: mod.request(outcome, a, ev.result, def),
       basis: { ruleId: ev.ruleId, ruleVersion: ev.ruleVersion, ruleSha256: ev.ruleSha256, accountRevision: a.revision, reasonCodes: ev.result.reasonCodes,
         facts: ev.factRefs.filter((f) => f.used).map((f) => ({ key: f.key, version: f.version, status: f.status, evidenceId: f.evidenceId })) },
       evidence: evidence.filter((e) => used.has(e.evidence_id)).map((e) => ({ evidenceId: e.evidence_id, kind: e.kind, sha256: e.sha256 })),
@@ -368,10 +353,11 @@ export function evaluateAndPropose(db: Db, scope: Scope, accountId: string, cont
     actionId = newId('act');
     const expires = new Date(now().getTime() + PROPOSAL_TTL_HOURS * 3600_000).toISOString();
     run(db, `INSERT INTO proposed_actions VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, scope.tenantId, scope.clientId, actionId, accountId, runId, a.revision,
-      outcome, spec.risk, spec.connector!, canonicalJson(payload), hashJson(payload), draftNote(a, facts, ev, titles), 'awaiting_review', expires, scope.userId, nowIso(), nowIso());
+      outcome, spec.risk, spec.connector!, canonicalJson(payload), hashJson(payload), draftNote(a, facts, ev, titles, def), 'awaiting_review', expires, scope.userId, nowIso(), nowIso());
     audit(db, { tenantId: scope.tenantId, clientId: scope.clientId, actorId: scope.userId, objectType: 'action', objectId: actionId, accountId,
       eventType: 'action_proposed', details: { kind: outcome, payloadSha256: hashJson(payload), expectedRevision: a.revision, expiresAt: expires } });
   }
   setAccountState(db, scope, accountId, runState);
-  return { runId, state: runState, outcome, reasonCodes: ev.result.reasonCodes, actionId, accountRevision: a.revision, superseded: superseded.map((s) => s.action_id) };
+  return { runId, state: runState, outcome, reasonCodes: ev.result.reasonCodes, actionId, accountRevision: a.revision, superseded: superseded.map((s) => s.action_id),
+    rule: { id: ev.ruleId, version: ev.ruleVersion, via: choice.resolution.via }, scenario: { status: choice.selection.status, selected: choice.selection.scenario } };
 }

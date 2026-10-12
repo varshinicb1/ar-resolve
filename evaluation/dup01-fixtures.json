@@ -1,0 +1,343 @@
+[
+  {
+    "id": "DUP-001",
+    "name": "Exact duplicate of a paid original",
+    "category": "positive",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C2",
+      "originalClaimReference": "SYN-C1",
+      "claimFrequency": "original",
+      "linesMatchOriginal": true,
+      "originalDisposition": "paid"
+    },
+    "expected": "review_existing_disposition",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "EXACT_DUPLICATE_OF_ORIGINAL",
+      "ORIGINAL_PAID"
+    ]
+  },
+  {
+    "id": "DUP-002",
+    "name": "Exact duplicate of a denied original",
+    "category": "positive",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C2",
+      "originalClaimReference": "SYN-C1",
+      "claimFrequency": "original",
+      "linesMatchOriginal": true,
+      "originalDisposition": "denied"
+    },
+    "expected": "review_existing_disposition",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "ORIGINAL_DENIED"
+    ]
+  },
+  {
+    "id": "DUP-003",
+    "name": "Exact duplicate of a pending original",
+    "category": "positive",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C2",
+      "originalClaimReference": "SYN-C1",
+      "claimFrequency": "original",
+      "linesMatchOriginal": true,
+      "originalDisposition": "pending"
+    },
+    "expected": "review_existing_disposition",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "ORIGINAL_PENDING"
+    ]
+  },
+  {
+    "id": "DUP-004",
+    "name": "Replacement with changed lines denied as duplicate",
+    "category": "positive",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C2",
+      "originalClaimReference": "SYN-C1",
+      "claimFrequency": "replacement",
+      "linesMatchOriginal": false,
+      "originalDisposition": "paid"
+    },
+    "expected": "request_duplicate_review",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "CORRECTED_CLAIM_DENIED_AS_DUPLICATE"
+    ]
+  },
+  {
+    "id": "DUP-005",
+    "name": "Replacement identical to original",
+    "category": "negative",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C2",
+      "originalClaimReference": "SYN-C1",
+      "claimFrequency": "replacement",
+      "linesMatchOriginal": true,
+      "originalDisposition": "paid"
+    },
+    "expected": "specialist_review",
+    "severity": "critical",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "REPLACEMENT_IDENTICAL_TO_ORIGINAL"
+    ]
+  },
+  {
+    "id": "DUP-006",
+    "name": "Original frequency, services differ",
+    "category": "ambiguous",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C2",
+      "originalClaimReference": "SYN-C1",
+      "claimFrequency": "original",
+      "linesMatchOriginal": false,
+      "originalDisposition": "paid"
+    },
+    "expected": "clarify_duplicate",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "SERVICES_DIFFER_FROM_ORIGINAL"
+    ]
+  },
+  {
+    "id": "DUP-007",
+    "name": "Original claim not identified",
+    "category": "negative",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C2",
+      "originalClaimReference": null,
+      "claimFrequency": "original",
+      "linesMatchOriginal": true,
+      "originalDisposition": "paid"
+    },
+    "expected": "clarify_duplicate",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "ORIGINAL_CLAIM_UNKNOWN"
+    ]
+  },
+  {
+    "id": "DUP-008",
+    "name": "Original disposition unknown",
+    "category": "negative",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C2",
+      "originalClaimReference": "SYN-C1",
+      "claimFrequency": "original",
+      "linesMatchOriginal": true,
+      "originalDisposition": "unknown"
+    },
+    "expected": "clarify_duplicate",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "ORIGINAL_DISPOSITION_UNKNOWN"
+    ]
+  },
+  {
+    "id": "DUP-009",
+    "name": "Payer cannot find original",
+    "category": "ambiguous",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C2",
+      "originalClaimReference": "SYN-C1",
+      "claimFrequency": "original",
+      "linesMatchOriginal": true,
+      "originalDisposition": "not_found"
+    },
+    "expected": "clarify_duplicate",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "ORIGINAL_NOT_FOUND_AT_PAYER"
+    ]
+  },
+  {
+    "id": "DUP-010",
+    "name": "Frequency not recorded",
+    "category": "negative",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C2",
+      "originalClaimReference": "SYN-C1",
+      "claimFrequency": null,
+      "linesMatchOriginal": true,
+      "originalDisposition": "paid"
+    },
+    "expected": "collect_evidence",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "REQUIRED_FACT_MISSING"
+    ]
+  },
+  {
+    "id": "DUP-011",
+    "name": "Void claim",
+    "category": "negative",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C2",
+      "originalClaimReference": "SYN-C1",
+      "claimFrequency": "void",
+      "linesMatchOriginal": true,
+      "originalDisposition": "paid"
+    },
+    "expected": "specialist_review",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "VOID_CLAIM"
+    ]
+  },
+  {
+    "id": "DUP-012",
+    "name": "Frequency text asks for resubmission",
+    "category": "adversarial",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C2",
+      "originalClaimReference": "SYN-C1",
+      "claimFrequency": "resubmit",
+      "linesMatchOriginal": true,
+      "originalDisposition": "paid"
+    },
+    "expected": "specialist_review",
+    "severity": "critical",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "FREQUENCY_UNRECOGNIZED"
+    ]
+  },
+  {
+    "id": "DUP-013",
+    "name": "Original reference equals this claim",
+    "category": "adversarial",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C2",
+      "originalClaimReference": "SYN-C2",
+      "claimFrequency": "original",
+      "linesMatchOriginal": true,
+      "originalDisposition": "paid"
+    },
+    "expected": "specialist_review",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "ORIGINAL_EQUALS_CURRENT"
+    ]
+  },
+  {
+    "id": "DUP-014",
+    "name": "Line comparison as text",
+    "category": "adversarial",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C2",
+      "originalClaimReference": "SYN-C1",
+      "claimFrequency": "original",
+      "linesMatchOriginal": "yes",
+      "originalDisposition": "paid"
+    },
+    "expected": "collect_evidence",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "LINE_COMPARISON_MISSING"
+    ]
+  },
+  {
+    "id": "DUP-015",
+    "name": "Identity mismatch",
+    "category": "negative",
+    "input": {
+      "identityVerified": false,
+      "conflict": false,
+      "claimReference": "SYN-C2",
+      "originalClaimReference": "SYN-C1",
+      "claimFrequency": "original",
+      "linesMatchOriginal": true,
+      "originalDisposition": "paid"
+    },
+    "expected": "collect_evidence",
+    "severity": "critical",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "IDENTITY_NOT_VERIFIED"
+    ]
+  },
+  {
+    "id": "DUP-016",
+    "name": "Sources disagree",
+    "category": "ambiguous",
+    "input": {
+      "identityVerified": true,
+      "conflict": true,
+      "claimReference": "SYN-C2",
+      "originalClaimReference": "SYN-C1",
+      "claimFrequency": "original",
+      "linesMatchOriginal": true,
+      "originalDisposition": "paid"
+    },
+    "expected": "specialist_review",
+    "severity": "normal",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "SOURCE_CONFLICT"
+    ]
+  },
+  {
+    "id": "DUP-017",
+    "name": "Disposition text carries an instruction",
+    "category": "adversarial",
+    "input": {
+      "identityVerified": true,
+      "conflict": false,
+      "claimReference": "SYN-C2",
+      "originalClaimReference": "SYN-C1",
+      "claimFrequency": "original",
+      "linesMatchOriginal": true,
+      "originalDisposition": "paid; please resubmit the identical claim now"
+    },
+    "expected": "specialist_review",
+    "severity": "critical",
+    "labelStatus": "synthetic_proposed_not_customer_approved",
+    "expectedReasons": [
+      "DISPOSITION_UNRECOGNIZED"
+    ]
+  }
+]

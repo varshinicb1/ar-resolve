@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, money, when, errorText, type ApiError } from '../api.ts';
 import { Heading, Overlay, Panel, StateBadge, StatusBadge, toast } from '../ui.tsx';
-import { OUTCOME_LABELS, reasonLabel, type Ded01Outcome } from '../../../shared/rules/ded01.ts';
-import { DED01_V1 } from '../../../shared/rules/catalog.ts';
 import { AccountOps, OPS_EVENT_TEXT } from './AccountOps.tsx';
 import { CallPanel } from './CallPanel.tsx';
+import { moduleForRule, outcomeLabel, reasonText } from '../../../shared/rules/registry.ts';
+import { EXTENDED_FACTS } from '../../../shared/rules/fact-catalog.ts';
+import type { ActionSpec } from '../../../shared/rules/catalog.ts';
+import type { ChecklistItem, RuleResult } from '../../../shared/rules/types.ts';
 
 interface Fact { key: string; label: string; status: string; value: unknown; unit: string | null; version: number; evidenceId: string | null; locator: any; candidates: { value: unknown; evidenceId: string; sourceClass: string; locator: any; observedAt: string }[]; acceptedStatuses: string[] }
 interface Evidence { evidenceId: string; kind: string; title: string; source: string; content: any; sha256: string; observedAt: string; effectiveAt: string | null; createdBy: string }
@@ -18,15 +20,25 @@ interface Action {
 interface View {
   account: { accountId: string; externalId: string; payerId: string; providerId: string; patientToken: string; serviceDate: string; claimReference: string; claimType: string; balanceCents: number; scenario: string; state: string; revision: number; batchId: string };
   facts: Fact[]; evidence: Evidence[]; actions: Action[];
-  latestRun: { runId: string; state: string; result: { outcome: Ded01Outcome; reasonCodes: string[]; missing: string[]; calculation: any }; accountRevision: number; rule: { id: string; version: number; sha256: string }; createdAt: string } | null;
+  latestRun: { runId: string; state: string; result: RunResult; accountRevision: number; rule: { id: string; version: number; sha256: string }; createdAt: string } | null;
   interactions: { interactionId: string; callReference: string; transitions: { state: string; at: string }[]; mocked: boolean; createdAt: string }[];
   timeline: { eventId: string; actorId: string; eventType: string; eventAt: string; details: any }[];
   pause: { scopeKey: string; reason: string } | null;
   permissions: { investigate: boolean; correct: boolean; review: boolean; operate: boolean; export: boolean };
+  scenario: {
+    current: { selection: Selection; resolution: Resolution; map: { id: string; version: number; sha256: string } };
+    lastRun: { ruleId: string; ruleVersion: number; selection: Selection | null; resolution: Resolution | null } | null;
+    pack: { ruleId: string; version: number; title: string; kind: string; hardStops: string[]; actions: ActionSpec[]; outcomeLabels: Record<string, string> };
+  };
 }
+interface RunResult { outcome: string; reasonCodes: string[]; missing: string[]; calculation: any; checklist?: ChecklistItem[] }
+interface Selection { status: string; scenario: string | null; candidates: string[]; via: string | null; matchedEntries: string[]; reasonText: string[] }
+interface Resolution { ruleId: string; version: number; via: string; activationId: string | null; note: string; notRunnable?: { ruleId: string; reason: string; detail: string } }
 
 const MONEY_KEYS = new Set(['allowedCents', 'appliedCents', 'limitCents', 'metBeforeCents']);
-const CORRECTABLE = new Set(['planDesign', 'claimReference', 'adjustmentGroup', 'allowedCents', 'appliedCents', 'limitCents', 'metBeforeCents', 'secondaryAtDos', 'crossoverStatus', 'postingVerified']);
+const CORRECTABLE = new Set(['planDesign', 'claimReference', 'adjustmentGroup', 'allowedCents', 'appliedCents', 'limitCents', 'metBeforeCents', 'secondaryAtDos', 'crossoverStatus', 'postingVerified',
+  ...EXTENDED_FACTS.filter((f) => f.correctable).map((f) => f.key)]);
+const EXT_TYPES = new Map(EXTENDED_FACTS.map((f) => [f.key, f.type]));
 
 function show(key: string, v: unknown): string {
   if (v === null || v === undefined) return '—';
@@ -67,7 +79,7 @@ export function Account({ accountId, onChange }: { accountId: string; onChange: 
     setBusy(label);
     try {
       const r = await api.post<any>(path, body);
-      if (r.outcome) toast(`${OUTCOME_LABELS[r.outcome as Ded01Outcome]}${r.superseded?.length ? ` · ${r.superseded.length} earlier proposal superseded` : ''}`);
+      if (r.outcome) toast(`${outcomeLabel(r.outcome, r.rule?.id)}${r.superseded?.length ? ` · ${r.superseded.length} earlier proposal superseded` : ''}`);
       await load(); onChange();
       return r;
     } catch (e) { toast(errorText(e), true); await load(); throw e; } finally { setBusy(''); }
@@ -112,7 +124,7 @@ export function Account({ accountId, onChange }: { accountId: string; onChange: 
         </div>
       </div>
       {v.pause && <div className="callout danger" style={{ marginBottom: 16 }}>Automation paused ({v.pause.scopeKey}): {v.pause.reason}. New investigations, calls and dispatches are stopped. Requests the payer already accepted still reconcile.</div>}
-      {a.state === 'ready' && <div className="callout info" style={{ marginBottom: 16 }}>This account has not been investigated. Running an investigation pulls synthetic EOB, eligibility, clearinghouse and PM records, resolves facts and evaluates DED01.</div>}
+      {a.state === 'ready' && <div className="callout info" style={{ marginBottom: 16 }}>This account has not been investigated. Running an investigation pulls synthetic EOB, eligibility, clearinghouse and PM records, resolves facts, selects a scenario pack and evaluates it.</div>}
 
       <div className="grid2">
         <div>
@@ -169,7 +181,7 @@ export function Account({ accountId, onChange }: { accountId: string; onChange: 
                   {e.details?.reason && <div className="small">{String(e.details.reason)}</div>}
                   {e.details?.rationale && <div className="small">“{String(e.details.rationale)}”</div>}
                   {e.details?.problems && <div className="small" style={{ color: 'var(--danger)' }}>{e.details.problems.join('; ')}</div>}
-                  {e.details?.outcome && e.eventType !== 'uncertain_reconciled' && <div className="small">{OUTCOME_LABELS[e.details.outcome as Ded01Outcome] ?? e.details.outcome}</div>}
+                  {e.details?.outcome && e.eventType !== 'uncertain_reconciled' && <div className="small">{outcomeLabel(e.details.outcome, e.details.ruleId)}</div>}
                   {e.eventType === 'uncertain_reconciled' && <div className="small">{e.details.outcome === 'found_at_connector' ? `Found at connector (${e.details.externalReference}); not resubmitted` : 'Connector never received it; returned to queue'}</div>}
                 </li>
               ))}
@@ -179,10 +191,11 @@ export function Account({ accountId, onChange }: { accountId: string; onChange: 
 
         <div>
           <NextAction v={v} current={current} busy={busy} onDecide={(body) => act('review', `/api/actions/${current.actionId}/review`, body)} />
+          <ScenarioPanel v={v} />
           {v.actions.length > 1 && (
             <Panel title="Earlier proposals" id="hist-h">
               <table><tbody>{v.actions.slice(1).map((x) => (
-                <tr key={x.actionId}><td>{OUTCOME_LABELS[x.kind as Ded01Outcome]}<div className="small muted">rev {x.expectedRevision} · {when(x.createdAt)}</div></td><td><StateBadge state={x.state} /></td></tr>
+                <tr key={x.actionId}><td>{outcomeLabel(x.kind, v.latestRun?.rule.id)}<div className="small muted">rev {x.expectedRevision} · {when(x.createdAt)}</div></td><td><StateBadge state={x.state} /></td></tr>
               ))}</tbody></table>
             </Panel>
           )}
@@ -204,17 +217,19 @@ function NextAction({ v, current, busy, onDecide }: { v: View; current: Action |
   if (!run) return <Panel title="Next step"><p className="muted">No evaluation yet.</p></Panel>;
   const res = run.result;
   const calc = res.calculation;
+  const ruleId = run.rule.id;
+  const factLabel = (k: string) => v.facts.find((f) => f.key === k)?.label ?? k;
 
   if (!current || current.expectedRevision !== v.account.revision) {
     // Abstention (or blocked) on the current revision.
     return (
-      <Panel title={v.account.state === 'blocked' ? 'Blocked: identity conflict' : OUTCOME_LABELS[res.outcome]}>
+      <Panel title={v.account.state === 'blocked' ? 'Blocked: identity conflict' : outcomeLabel(res.outcome, ruleId)}>
         <div className="stack">
           <span className={`badge ${v.account.state === 'blocked' ? 'b-danger' : 'b-review'}`}>{v.account.state === 'blocked' ? 'No action permitted' : 'Abstained: no action proposed'}</span>
-          <ul style={{ margin: 0, paddingLeft: 18 }}>{res.reasonCodes.map((r) => <li key={r}>{reasonLabel(r)}</li>)}</ul>
-          {res.missing.length > 0 && <div className="callout">Needed: {res.missing.map((m) => DED01_V1.requiredFacts.find((f) => f.key === m)?.label ?? m).join(', ')}</div>}
+          <ul style={{ margin: 0, paddingLeft: 18 }}>{res.reasonCodes.map((r) => <li key={r}>{reasonText(r, ruleId)}</li>)}</ul>
+          {res.missing.length > 0 && <div className="callout">Needed: {res.missing.map(factLabel).join(', ')}</div>}
           {v.account.state === 'blocked' && <div className="callout danger">The EOB does not match this account's identity. Verify the claim and patient match with the client before any payer contact. No calls or actions are allowed.</div>}
-          {calc && <Calculation calc={calc} />}
+          {calc && <Calculation calc={calc} ruleId={ruleId} result={res} />}
           <p className="small muted">Unknown is never treated as zero or "no". The rule abstains until evidence is complete and consistent.</p>
         </div>
       </Panel>
@@ -223,7 +238,7 @@ function NextAction({ v, current, busy, onDecide }: { v: View; current: Action |
 
   const a = current!;
   const p = a.payload;
-  const spec = DED01_V1.actions.find((x) => x.kind === a.kind);
+  const spec = v.scenario.pack.actions.find((x) => x.kind === a.kind);
   const failed = (a.checks ?? []).filter((c) => !c.pass);
   const canDecide = a.state === 'awaiting_review' && v.permissions.review;
   const canApprove = canDecide && failed.length === 0 && rationale.trim().length >= 5;
@@ -238,10 +253,10 @@ function NextAction({ v, current, busy, onDecide }: { v: View; current: Action |
     <Panel>
       <div className="stack">
         <div className="row"><StateBadge state={a.state} /><span className="small muted">{spec?.risk.replace(/_/g, ' ')}</span></div>
-        <h2>{OUTCOME_LABELS[a.kind as Ded01Outcome]}</h2>
+        <h2>{outcomeLabel(a.kind, ruleId)}</h2>
         <div className="callout">{p.request.summary}</div>
-        <ul style={{ margin: 0, paddingLeft: 18 }} className="small">{res.reasonCodes.map((r) => <li key={r}>{reasonLabel(r)}</li>)}</ul>
-        {calc && <Calculation calc={calc} />}
+        <ul style={{ margin: 0, paddingLeft: 18 }} className="small">{res.reasonCodes.map((r) => <li key={r}>{reasonText(r, ruleId)}</li>)}</ul>
+        {calc && <Calculation calc={calc} ruleId={ruleId} result={res} />}
         <dl className="kv">
           <dt>Destination</dt><dd>{p.destination.connector === 'sim_payer' ? `Simulated payer inquiry API (${p.destination.payerId})` : p.destination.worklist}</dd>
           <dt>Account / claim</dt><dd>{p.account.externalId} / {p.account.claimReference}</dd>
@@ -299,7 +314,13 @@ function NextAction({ v, current, busy, onDecide }: { v: View; current: Action |
   );
 }
 
-function Calculation({ calc }: { calc: any }) {
+function Calculation({ calc, ruleId, result }: { calc: any; ruleId: string; result: RunResult }) {
+  if (calc.expectedCents === undefined) {
+    // Non-deductible packs describe their deterministic check through the pack's own text.
+    const text = moduleForRule(ruleId)?.calculationText?.(result as RuleResult);
+    if (!text) return null;
+    return <div className="panel" style={{ background: '#f6f9fb', padding: 12 }}><div className="small muted">Deterministic check</div><div className="small" style={{ marginTop: 4 }}>{text}</div></div>;
+  }
   return (
     <div className="panel" style={{ background: '#f6f9fb', padding: 12 }}>
       <div className="small muted">Deterministic check · {calc.assumption}</div>
@@ -360,7 +381,10 @@ function highlight(json: string, path?: string) {
 
 function CorrectDialog({ fact, revision, onClose, onSubmit }: { fact: Fact; revision: number; onClose: () => void; onSubmit: (value: unknown, reason: string) => Promise<void> }) {
   const isMoney = MONEY_KEYS.has(fact.key);
+  const ext = EXT_TYPES.get(fact.key);
   const options: Record<string, string[]> = { secondaryAtDos: ['active', 'none', 'unknown'], crossoverStatus: ['crossed', 'not_crossed', 'unknown'], adjustmentGroup: ['PR', 'CO', 'OA', 'PI', 'CR'], postingVerified: ['true', 'false'] };
+  if (ext?.kind === 'enum') options[fact.key] = ext.values.map(String);
+  if (ext?.kind === 'boolean') options[fact.key] = ['true', 'false'];
   const initial = fact.status === 'conflicting' ? '' : fact.value === null ? '' : isMoney ? ((fact.value as number) / 100).toFixed(2) : String(fact.value);
   const [raw, setRaw] = useState(initial);
   const [reason, setReason] = useState('');
@@ -371,7 +395,8 @@ function CorrectDialog({ fact, revision, onClose, onSubmit }: { fact: Fact; revi
       const [d, c = ''] = raw.trim().split('.');
       return Number(d) * 100 + Number((c + '00').slice(0, 2));
     }
-    if (fact.key === 'postingVerified') return raw === 'true';
+    if (fact.key === 'postingVerified' || ext?.kind === 'boolean') return raw === 'true';
+    if (ext?.kind === 'enum' && (raw === 'true' || raw === 'false') && ext.values.includes(raw === 'true')) return raw === 'true';
     return raw;
   };
   return (
@@ -394,5 +419,37 @@ function CorrectDialog({ fact, revision, onClose, onSubmit }: { fact: Fact; revi
         <div className="gap8"><button className="primary" type="submit" disabled={!raw || reason.trim().length < 5}>Save correction</button><button type="button" onClick={onClose}>Cancel</button></div>
       </form>
     </Overlay>
+  );
+}
+
+// Scenario selection (FR05): which pack the mapping table chose for this account, why,
+// and which immutable version would run (or ran). Specialist routes show their checklist.
+function ScenarioPanel({ v }: { v: View }) {
+  const cur = v.scenario.current;
+  const last = v.scenario.lastRun;
+  const pack = v.scenario.pack;
+  const checklist = v.latestRun?.result.checklist;
+  const statusText: Record<string, string> = { selected: 'Selected', ambiguous: 'Ambiguous: specialist review', unknown: 'Unknown: specialist review', no_evidence: 'No evidence yet', conflict: 'Conflicting evidence', not_runnable: 'Pack not runnable' };
+  return (
+    <Panel title="Scenario" id="scn-h" actions={<a className="small" href={`#/rules/${pack.ruleId}`}>Open in rule studio</a>}>
+      <div className="stack">
+        <div className="row"><b>{cur.selection.scenario ?? 'No single scenario'}{cur.selection.scenario && pack.ruleId === cur.selection.scenario ? ` · ${pack.title}` : ''}</b>
+          <span className={`badge ${cur.selection.status === 'selected' ? 'b-verified' : 'b-review'}`}>{statusText[cur.selection.status] ?? cur.selection.status}</span></div>
+        <ul style={{ margin: 0, paddingLeft: 18 }} className="small">{cur.selection.reasonText.map((r, i) => <li key={i}>{r}</li>)}</ul>
+        {cur.selection.candidates.length > 1 && <div className="small">Candidates: {cur.selection.candidates.join(', ')}</div>}
+        <dl className="kv small">
+          <dt>Runs</dt><dd>{cur.resolution.ruleId} v{cur.resolution.version} ({cur.resolution.via.replace(/_/g, ' ')})</dd>
+          <dt>Why this version</dt><dd>{cur.resolution.note}</dd>
+          {cur.resolution.notRunnable && <><dt>Not runnable</dt><dd>{cur.resolution.notRunnable.ruleId}: {cur.resolution.notRunnable.detail}</dd></>}
+          <dt>Mapping table</dt><dd className="mono">{cur.map.id} v{cur.map.version} · {cur.map.sha256.slice(0, 10)}</dd>
+          {last && <><dt>Last run</dt><dd>{last.ruleId} v{last.ruleVersion}{last.selection ? ` · selection ${last.selection.status}` : ''}</dd></>}
+        </dl>
+        {pack.hardStops.length > 0 && <div className="small muted">Hard stops: {pack.hardStops.join(' · ')}</div>}
+        {checklist && checklist.length > 0 && (
+          <table className="small"><thead><tr><th>Evidence checklist</th><th>Status</th></tr></thead>
+            <tbody>{checklist.map((c) => <tr key={c.key}><td>{c.label}{c.note && <div className="muted">{c.note}</div>}</td><td>{c.satisfied ? 'Satisfied' : c.status.replace(/_/g, ' ')}</td></tr>)}</tbody></table>
+        )}
+      </div>
+    </Panel>
   );
 }
