@@ -1,6 +1,6 @@
 # Evaluation report: scenario packs (synthetic)
 
-Generated 2026-10-12T21:53:12.545Z by `npm run eval`.
+Generated 2026-10-12T21:58:54.009Z by `npm run eval`.
 
 **Scope.** Mechanics validation of the deterministic scenario packs and scenario selection on synthetic fixtures. Labels are synthetic proposals (`synthetic_proposed_not_customer_approved`); DED01 uses the build pack's fixtures unchanged. This is not payer-policy validation, not shadow-mode accuracy and not a basis for any accuracy claim (docs/09).
 
