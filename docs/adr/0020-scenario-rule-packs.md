@@ -62,7 +62,7 @@ Phase 0 shipped a single deductible rule (DED01) and a read-only rule studio. FR
 ## Known limitations
 
 - `rule_versions.version` numbers are allocated per rule_id across all tenants, because the core table has no scope column. Gaps in a client's version list can reveal that another tenant has versions, but they reveal no content. A scoped key is the fix when moving to PostgreSQL.
-- The mapping table itself is code-versioned and is not edited in the studio.
+- The mapping table itself is code-versioned and is not edited in the studio. It is the single routing source: the KB routing derives from it (ADR 0060).
 - The impact view on current accounts re-evaluates their current facts. It does not replay historical runs.
 - Pack parameters (for example `statusMaxAgeDays`) are synthetic defaults, not payer policy.
 

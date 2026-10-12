@@ -31,6 +31,6 @@ Provider selection and contract, BAA and covered-service verification, media reg
 
 ## Known limitations
 
-- A later re-investigation can still produce a new `clarify_allocation` proposal after a verbal acceptance. Reviewers see the call and its commitment in the timeline, but `review.ts` has no cross-channel duplicate check yet.
+- ~~A later re-investigation can still produce a new `clarify_allocation` proposal after a verbal acceptance.~~ Resolved by ADR 0060: the proposal can still be generated, but approval and dispatch are blocked until the verbal request is reconciled.
 - Simulated time is deterministic per event and is not wall-clock time. The worker advances one step per call per tick.
 - Concurrency and rate limits are counted per tenant and payer in our database, not read from a provider.
