@@ -20,6 +20,7 @@ export const PERMISSIONS = {
   manage_followups: ['specialist', 'reviewer', 'supervisor'],
   rule_author: ['reviewer', 'supervisor'],
   rule_approve: ['rule_approver'],
+  integration_admin: ['supervisor'],
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Permission = keyof typeof PERMISSIONS;

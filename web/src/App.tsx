@@ -11,6 +11,7 @@ import { Knowledge } from './pages/Knowledge.tsx';
 import { Followups } from './pages/Followups.tsx';
 import { Insights } from './pages/Insights.tsx';
 import { Calls } from './pages/Calls.tsx';
+import { Integrations } from './pages/Integrations.tsx';
 
 export interface ScopeOption { tenantId: string; tenantName: string; clientId: string; clientName: string; roles: string[] }
 export interface Me { userId: string; displayName: string; scopes: ScopeOption[]; environment: string; liveActions: string }
@@ -91,6 +92,7 @@ export function App() {
     ['insights', 'Insights', null],
     ['operations', 'Operations', counts.receipt_uncertain || null],
     ['knowledge', 'Knowledge', null],
+    ...(roles.includes('supervisor') || roles.includes('admin') ? [['integrations', 'Integrations', null] as [string, string, null]] : []),
   ];
 
   return (
@@ -135,6 +137,7 @@ export function App() {
           {path === 'followups' && <Followups roles={roles} />}
           {path === 'insights' && <Insights roles={roles} />}
           {path === 'calls' && <Calls />}
+          {path === 'integrations' && <Integrations roles={roles} />}
         </main>
       </div>
       <Toaster />
