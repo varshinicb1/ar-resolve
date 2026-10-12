@@ -51,11 +51,17 @@ test('kb:verify catches tampering, duplicates, missing sources and routing to un
   has(/not marked synthetic/);
 
   const root2 = copyKnowledge();
-  edit(root2, 'x12/carc.json', (ds) => { ds.entries = ds.entries.filter((e: any) => e.code !== '133'); });
+  edit(root2, 'x12/carc.json', (ds) => {
+    ds.entries = ds.entries.filter((e: any) => e.code !== '133' && e.code !== '197');
+    const c29 = ds.entries.find((e: any) => e.code === '29'); c29.status = 'deactivated'; c29.stopDate = '2020-01-01';
+  });
   edit(root2, 'x12/rarc.json', (ds) => { ds.entries.find((e: any) => e.code === 'M15').stopDate = '2020-01-01'; ds.entries.find((e: any) => e.code === 'M15').status = 'deactivated'; });
   const r2 = verifyKnowledge(root2);
   assert.ok(r2.errors.includes('routing: PEND01 references unknown CARC 133'));
-  assert.ok(r2.errors.includes('routing: BUND01 references deactivated RARC M15'));
+  assert.ok(r2.errors.includes('routing: BUN01 references deactivated RARC M15'));
+  // The rule-pack selection map is the routing source of truth: its CARCs must exist and be active.
+  assert.ok(r2.errors.includes('selection map SCENARIO_MAP v1: carc-29 (TF01) references deactivated CARC 29'), r2.errors.join('\n'));
+  assert.ok(r2.errors.includes('selection map SCENARIO_MAP v1: carc-197 (AUTH01) references unknown CARC 197'));
 });
 
 test('loader versions datasets by hash and refuses tampered files', () => {
@@ -92,8 +98,8 @@ test('routeScenario: pure draft routing with specialist review for unknown or co
   assert.equal(routeScenario('CO', '16', ['M127']).scenarioId, 'DOC01');
   const multi = routeScenario('CO', '50', ['M15']);
   assert.equal(multi.decision, 'specialist_review');
-  assert.deepEqual(multi.candidates.map((c) => c.scenarioId).sort(), ['BUND01', 'MN01']);
-  assert.equal(routeScenario('CO', '97', ['M15']).scenarioId, 'BUND01', 'corroborating RARC keeps a single candidate');
+  assert.deepEqual(multi.candidates.map((c) => c.scenarioId).sort(), ['BUN01', 'MN01']);
+  assert.equal(routeScenario('CO', '97', ['M15']).scenarioId, 'BUN01', 'corroborating RARC keeps a single candidate');
   assert.equal(routeScenario('PR', '18').decision, 'specialist_review', 'duplicate only under OA/CO');
   assert.equal(routeScenario('OA', '18').scenarioId, 'DUP01');
 });
@@ -156,7 +162,7 @@ test('KB API: search, code lookup, explain and playbooks', async () => {
     assert.equal((await ana.get('/api/kb/explain')).status, 400);
 
     const pbs = (await ana.get('/api/kb/playbooks')).body;
-    assert.deepEqual(pbs.map((p: any) => p.id), ['DED01', 'PEND01', 'DOC01', 'DUP01', 'COB01', 'TF01', 'AUTH01', 'MN01', 'BUND01']);
+    assert.deepEqual(pbs.map((p: any) => p.id), ['DED01', 'PEND01', 'DOC01', 'DUP01', 'COB01', 'TF01', 'AUTH01', 'MN01', 'BUN01']);
     assert.ok(pbs.every((p: any) => p.reviewStatus === 'draft' && p.routes.length > 0));
     const tf = (await ana.get('/api/kb/playbooks/TF01')).body;
     assert.ok(tf.hardStops.includes('No automatic write-off when a date looks expired.'));

@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { type Db, all, one, run, tx } from '../db/db.ts';
 import { hashJson, nowIso, notFound, invalid } from '../util.ts';
 import { requirePerm, type Scope } from './auth.ts';
-import { ROUTING_TABLE, routeScenario, type RouteResult } from '../../shared/kb/routing.ts';
+import { ROUTING_SOURCE_MAP, ROUTING_TABLE, routeScenario, type RouteResult } from '../../shared/kb/routing.ts';
 
 export const KB_ROOT = fileURLToPath(new URL('../../knowledge/', import.meta.url));
 
@@ -314,7 +314,14 @@ export function explainAdjustment(db: Db, s: Scope, input: { group?: unknown; ca
   return { group: { ...g, name: groupName }, carc: c, rarcs: rs, route, decision, scenarioId, playbook, caveats };
 }
 
-const routesFor = (id: string) => ROUTING_TABLE.filter((r) => r.scenarioId === id).map((r) => ({ carcs: r.carcs, groups: r.groups ?? null, rarcs: r.rarcs, requiresRarc: !!r.requiresRarc, note: r.note, signoff: r.signoff }));
+const routesFor = (id: string) => {
+  const carcRows = ROUTING_TABLE.filter((r) => r.scenarioId === id).map((r) => ({ carcs: r.carcs, groups: r.groups ?? null, rarcs: r.rarcs, requiresRarc: !!r.requiresRarc, claimStatuses: [] as string[], note: r.note, signoff: r.signoff }));
+  // Claim-status rows of the selection map (the routing source of truth, ADR 0060).
+  const statuses = ROUTING_SOURCE_MAP.entries.filter((e) => e.scenario === id && e.match.claimStatus).map((e) => e.match.claimStatus!);
+  const statusRows = statuses.length ? [{ carcs: [] as string[], groups: null, rarcs: [] as string[], requiresRarc: false, claimStatuses: statuses,
+    note: `Selected by payer claim status (selection map ${ROUTING_SOURCE_MAP.id} v${ROUTING_SOURCE_MAP.version}; synthetic status values).`, signoff: 'draft_requires_business_signoff' as const }] : [];
+  return [...carcRows, ...statusRows];
+};
 
 export function listPlaybooks(db: Db, s: Scope) {
   requirePerm(s, 'view');

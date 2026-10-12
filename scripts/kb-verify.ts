@@ -1,10 +1,11 @@
 // npm run kb:verify — integrity checks for knowledge/*.json:
 // header provenance, sha256 + count, duplicate keys, per-entry sources/citations,
-// routing references to unknown or deactivated codes, and synthetic-only payers.
+// routing references to unknown or deactivated codes, the rule-pack selection map's code
+// references (the routing source of truth, ADR 0060), and synthetic-only payers.
 // Exit code 1 on any error. `--print-hashes` prints computed hashes (for a deliberate,
 // reviewed dataset update; it never rewrites files).
 import { KB_FILES, datasetHash, readDataset, type Dataset } from '../server/services/kb.ts';
-import { ROUTING_TABLE, routingCodeRefs } from '../shared/kb/routing.ts';
+import { ROUTING_SOURCE_MAP, ROUTING_TABLE, guardViolations, routingCodeRefs } from '../shared/kb/routing.ts';
 
 export interface VerifyReport { errors: string[]; warnings: string[]; counts: Record<string, number> }
 
@@ -82,6 +83,23 @@ export function verifyKnowledge(root?: string): VerifyReport {
     else if (c.status === 'deactivated') errors.push(`routing: ${ref.scenarioId} references deactivated ${ref.type.toUpperCase()} ${ref.code}`);
     else if (c.status !== 'current') warnings.push(`routing: ${ref.scenarioId} references ${ref.type.toUpperCase()} ${ref.code} with status ${c.status}`);
   }
+  // The selection map is the routing source of truth: every CARC/RARC it routes on must be in the
+  // loaded code lists and not deactivated, and every scenario it selects must have a playbook.
+  const map = ROUTING_SOURCE_MAP;
+  for (const e of map.entries) {
+    for (const [type, code] of [['carc', e.match.carc], ['rarc', e.match.rarc]] as const) {
+      if (code === undefined) continue;
+      const c = codes.get(`${type}:${code}`);
+      const where = `selection map ${map.id} v${map.version}: ${e.id} (${e.scenario})`;
+      if (!c) errors.push(`${where} references unknown ${type.toUpperCase()} ${code}`);
+      else if (c.status === 'deactivated') errors.push(`${where} references deactivated ${type.toUpperCase()} ${code}`);
+      else if (c.status !== 'current') warnings.push(`${where} references ${type.toUpperCase()} ${code} with status ${c.status}`);
+    }
+    if (e.match.group !== undefined && !codes.has(`group:${e.match.group}`)) errors.push(`selection map ${map.id} v${map.version}: ${e.id} references unknown group ${e.match.group}`);
+    if (!playbookIds.has(e.scenario)) errors.push(`selection map ${map.id} v${map.version}: scenario ${e.scenario} has no playbook`);
+  }
+  for (const v of guardViolations(map)) errors.push(`routing: ${v}`);
+  counts['selection map carc rows'] = map.entries.filter((e) => e.match.carc !== undefined).length;
   for (const r of ROUTING_TABLE) {
     if (!playbookIds.has(r.scenarioId)) errors.push(`routing: scenario ${r.scenarioId} has no playbook`);
     for (const g of r.groups ?? []) if (!codes.has(`group:${g}`)) errors.push(`routing: unknown group ${g}`);

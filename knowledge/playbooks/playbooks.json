@@ -16,7 +16,7 @@
     },
     "retrievedAt": "2026-10-12",
     "count": 9,
-    "sha256": "aa19bbe72d98b75386d5a2bcc3309b811b19c6f04fae5a9554a9d6e1721a477a"
+    "sha256": "15991e2d7404660f5b0785cc4808c8af7a882e0542b6a6eb8a58d2d9f1cbb947"
   },
   "entries": [
     {
@@ -488,7 +488,7 @@
         "Who can authorize write-offs?",
         "How are holidays and payer TAT computed?"
       ],
-      "id": "BUND01",
+      "id": "BUN01",
       "title": "Bundled service",
       "executable": null,
       "objective": "Stage a coding review with the payer edit and line evidence.",

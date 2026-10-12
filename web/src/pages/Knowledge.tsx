@@ -101,7 +101,7 @@ function ExplainView() {
   );
 }
 
-interface PbSummary { id: string; title: string; objective: string; executable: string | null; routes: { carcs: string[]; groups: string[] | null; rarcs: string[]; requiresRarc: boolean }[] }
+interface PbSummary { id: string; title: string; objective: string; executable: string | null; routes: { carcs: string[]; groups: string[] | null; rarcs: string[]; requiresRarc: boolean; claimStatuses?: string[] }[] }
 function PlaybooksView() {
   const [list, err] = useLoad<PbSummary[]>('/api/kb/playbooks');
   if (err) return <div className="callout danger">{err}</div>;
@@ -112,7 +112,7 @@ function PlaybooksView() {
       <table><thead><tr><th>Pack</th><th>Routed from</th><th>Status</th></tr></thead>
         <tbody>{list.map((p) => (
           <tr key={p.id}><td><a href={`#/knowledge/playbook:${p.id}`}><strong>{p.id}</strong> · {p.title}</a><div className="small muted">{p.objective}</div></td>
-            <td className="small">{p.routes.map((r, i) => <div key={i}>CARC {r.carcs.join(', ')}{r.groups ? ` (${r.groups.join('/')})` : ''}{r.rarcs.length ? ` · RARC ${r.rarcs.join(', ')}${r.requiresRarc ? ' required' : ''}` : ''}</div>)}</td>
+            <td className="small">{p.routes.map((r, i) => <div key={i}>{r.claimStatuses?.length ? `Claim status ${r.claimStatuses.join(', ')}` : `CARC ${r.carcs.join(', ')}`}{r.groups ? ` (${r.groups.join('/')})` : ''}{r.rarcs.length ? ` · RARC ${r.rarcs.join(', ')}${r.requiresRarc ? ' required' : ''}` : ''}</div>)}</td>
             <td><span className="badge b-review">draft</span>{p.executable && <div className="small muted">{p.executable}</div>}</td></tr>))}
         </tbody></table>
     </Panel>
@@ -136,7 +136,7 @@ function PlaybookDetail({ id }: { id: string }) {
           <Panel title="Routed from (draft)">
             {p.routes.map((r: any, i: number) => (
               <div key={i} className="small" style={{ marginBottom: 6 }}>
-                CARC {r.carcs.map((c: string) => <a key={c} href={codeHref('carc', c)} className="mono" style={{ marginRight: 6 }}>{c}</a>)}
+                {r.claimStatuses?.length ? <>Claim status <span className="mono">{r.claimStatuses.join(', ')}</span></> : <>CARC {r.carcs.map((c: string) => <a key={c} href={codeHref('carc', c)} className="mono" style={{ marginRight: 6 }}>{c}</a>)}</>}
                 {r.groups && <> under {r.groups.join('/')}</>}
                 {r.rarcs.length > 0 && <> · RARC {r.rarcs.map((c: string) => <a key={c} href={codeHref('rarc', c)} className="mono" style={{ marginRight: 6 }}>{c}</a>)}{r.requiresRarc ? '(required)' : '(corroborating)'}</>}
                 <div className="muted">{r.note}</div>
