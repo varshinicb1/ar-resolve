@@ -44,7 +44,9 @@ export function accountView(db: Db, scope: Scope, accountId: string) {
   const interactions = all<{ interaction_id: string; channel: string; destination: string; state: string; transitions: string; transcript_evidence_id: string | null; call_reference: string | null; mocked: number; created_at: string }>(db,
     'SELECT * FROM interactions WHERE tenant_id=? AND client_id=? AND account_id=? ORDER BY created_at', scope.tenantId, scope.clientId, accountId)
     .map((i) => ({ interactionId: i.interaction_id, channel: i.channel, destination: i.destination, state: i.state, transitions: JSON.parse(i.transitions),
-      transcriptEvidenceId: i.transcript_evidence_id, callReference: i.call_reference, mocked: !!i.mocked, createdAt: i.created_at }));
+      transcriptEvidenceId: i.transcript_evidence_id, callReference: i.call_reference, mocked: !!i.mocked, createdAt: i.created_at,
+      // ADR 0060: calls run by the voice engine against the simulated line, vs the legacy pre-scripted transcript.
+      engineCallId: one<{ call_id: string }>(db, 'SELECT call_id FROM voice_calls WHERE tenant_id=? AND client_id=? AND interaction_id=?', scope.tenantId, scope.clientId, i.interaction_id)?.call_id ?? null }));
   return {
     account: {
       accountId: a.account_id, externalId: a.external_id, payerId: a.payer_id, providerId: a.provider_id, patientToken: a.patient_token,

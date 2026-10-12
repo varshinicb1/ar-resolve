@@ -3,6 +3,7 @@ import { api, money, when, errorText, type ApiError } from '../api.ts';
 import { Heading, Overlay, Panel, StateBadge, StatusBadge, toast } from '../ui.tsx';
 import { AccountOps, OPS_EVENT_TEXT } from './AccountOps.tsx';
 import { CallPanel } from './CallPanel.tsx';
+import { AdjustmentCodes, VerbalRequests } from './AccountGlue.tsx';
 import { moduleForRule, outcomeLabel, reasonText } from '../../../shared/rules/registry.ts';
 import { EXTENDED_FACTS } from '../../../shared/rules/fact-catalog.ts';
 import type { ActionSpec } from '../../../shared/rules/catalog.ts';
@@ -21,7 +22,7 @@ interface View {
   account: { accountId: string; externalId: string; payerId: string; providerId: string; patientToken: string; serviceDate: string; claimReference: string; claimType: string; balanceCents: number; scenario: string; state: string; revision: number; batchId: string };
   facts: Fact[]; evidence: Evidence[]; actions: Action[];
   latestRun: { runId: string; state: string; result: RunResult; accountRevision: number; rule: { id: string; version: number; sha256: string }; createdAt: string } | null;
-  interactions: { interactionId: string; callReference: string; transitions: { state: string; at: string }[]; mocked: boolean; createdAt: string }[];
+  interactions: { interactionId: string; callReference: string; transitions: { state: string; at: string }[]; mocked: boolean; engineCallId: string | null; state: string; createdAt: string }[];
   timeline: { eventId: string; actorId: string; eventType: string; eventAt: string; details: any }[];
   pause: { scopeKey: string; reason: string } | null;
   permissions: { investigate: boolean; correct: boolean; review: boolean; operate: boolean; export: boolean };
@@ -54,6 +55,11 @@ const EVENT_TEXT: Record<string, string> = {
   proposal_needs_evidence: 'Evidence requested', action_dispatched: 'Dispatched to connector', dispatch_uncertain: 'Receipt uncertain', uncertain_reconciled: 'Uncertain dispatch reconciled',
   action_receipt_received: 'Receipt recorded', dispatch_blocked: 'Dispatch blocked by executor re-check', payer_confirmation_received: 'Payer confirmed receipt (not payment)',
   audit_exported: 'Audit packet exported', dispatch_failed: 'Dispatch failed',
+  // Voice, integrations and glue events (ADR 0030, 0050, 0060).
+  voice_call_started: 'Simulated payer call started', voice_call_ended: 'Simulated payer call ended', voice_call_refused: 'Call refused by the policy gate',
+  voice_call_handoff: 'Call handed to a specialist', voice_call_cancel_requested: 'Call cancellation requested', voice_call_reconciled: 'Earlier dropped call reconciled',
+  verbal_request_released: 'Verbal payer request released by reviewer', integration_identity_mismatch: 'Integration file not attached: identity mismatch',
+  claim_status_notification: 'Claim status notification received', remittance_unmatched: 'Remittance line not matched',
 };
 Object.assign(EVENT_TEXT, OPS_EVENT_TEXT);
 
@@ -146,6 +152,8 @@ export function Account({ accountId, onChange }: { accountId: string; onChange: 
             </table>
           </Panel>
 
+          <AdjustmentCodes facts={v.facts} />
+
           <Panel title="Evidence" id="ev-h">
             {v.evidence.length === 0 ? <p className="muted">No evidence collected.</p> : (
               <table>
@@ -161,12 +169,13 @@ export function Account({ accountId, onChange }: { accountId: string; onChange: 
           </Panel>
 
           <CallPanel accountId={accountId} onChange={load} />
+          <VerbalRequests accountId={accountId} canRelease={v.permissions.review} revision={a.revision} onChange={load} />
 
           {v.interactions.length > 0 && (
             <Panel title="Payer interactions" id="int-h">
               {v.interactions.map((i) => (
                 <div key={i.interactionId} className="stack">
-                  <div className="row"><b>Call {i.callReference}</b>{i.mocked && <span className="badge b-review">Mocked: pre-scripted</span>}</div>
+                  <div className="row"><b>Call {i.callReference ?? i.engineCallId}</b>{i.engineCallId ? <span className="badge b-review">Simulated call</span> : i.mocked && <span className="badge b-review">Mocked: pre-scripted</span>}</div>
                   <p className="small muted">{i.transitions.map((t) => t.state).join(' → ')}</p>
                 </div>
               ))}
@@ -181,7 +190,8 @@ export function Account({ accountId, onChange }: { accountId: string; onChange: 
                   {e.details?.reason && <div className="small">{String(e.details.reason)}</div>}
                   {e.details?.rationale && <div className="small">“{String(e.details.rationale)}”</div>}
                   {e.details?.problems && <div className="small" style={{ color: 'var(--danger)' }}>{e.details.problems.join('; ')}</div>}
-                  {e.details?.outcome && e.eventType !== 'uncertain_reconciled' && <div className="small">{outcomeLabel(e.details.outcome, e.details.ruleId)}</div>}
+                  {e.details?.outcome && e.eventType !== 'uncertain_reconciled' && !e.eventType.startsWith('voice_call_') && <div className="small">{outcomeLabel(e.details.outcome, e.details.ruleId)}</div>}
+                  {e.eventType.startsWith('voice_call_') && (e.details?.reasonCode || e.details?.outcome) && <div className="small">{[e.details.state, e.details.reasonCode, e.details.outcome].filter(Boolean).map((x: string) => String(x).replace(/_/g, ' ')).join(' · ')}</div>}
                   {e.eventType === 'uncertain_reconciled' && <div className="small">{e.details.outcome === 'found_at_connector' ? `Found at connector (${e.details.externalReference}); not resubmitted` : 'Connector never received it; returned to queue'}</div>}
                 </li>
               ))}
