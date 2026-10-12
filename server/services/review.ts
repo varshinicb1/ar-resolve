@@ -60,6 +60,7 @@ export function reviewAction(db: Db, scope: Scope, actionId: string, input: Revi
   if (typeof input.payloadSha256 !== 'string' || typeof input.accountRevision !== 'number') throw invalid('payloadSha256 and accountRevision are required');
   return tx(db, () => {
     const action = getAction(db, scope, actionId);
+    if (action.kind === 'note_writeback') throw conflict('wrong_review_path', 'Note write-back has its own permission and review: use /api/writebacks/:id/review');
     const account = getAccountRow(db, scope, action.account_id);
     if (input.payloadSha256 !== action.payload_sha256) throw conflict('payload_mismatch', 'The proposal you reviewed is not the stored proposal. Refresh before deciding.');
     if (input.accountRevision !== account.revision || action.expected_revision !== account.revision) {

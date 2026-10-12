@@ -32,8 +32,9 @@ function setAccountState(db: Db, scope: Scope, accountId: string, state: string)
   run(db, 'UPDATE accounts SET state=?, updated_at=? WHERE tenant_id=? AND client_id=? AND account_id=?', state, nowIso(), scope.tenantId, scope.clientId, accountId);
 }
 
-function ensureNotPaused(db: Db, scope: Scope) {
-  const p = activePause(db, scope.tenantId, scope.clientId);
+function ensureNotPaused(db: Db, scope: Scope, accountId?: string) {
+  const dims = accountId ? one<{ payer_id: string; scenario: string }>(db, 'SELECT payer_id, scenario FROM accounts WHERE tenant_id=? AND client_id=? AND account_id=?', scope.tenantId, scope.clientId, accountId) : undefined;
+  const p = activePause(db, scope.tenantId, scope.clientId, { payerId: dims?.payer_id, scenario: dims?.scenario });
   if (p) throw new AppError(423, 'automation_paused', `Automation is paused (${p.scopeKey}): ${p.reason}`);
 }
 
@@ -165,7 +166,7 @@ export function listAccounts(db: Db, scope: Scope, opts: { view?: string; q?: st
   const rows = all<AccountRow>(db, `SELECT * FROM accounts WHERE ${where}`, ...params);
   const items = rows.map((a) => {
     const p = priorityOf(a);
-    const action = one<{ kind: string; state: string }>(db, 'SELECT kind, state FROM proposed_actions WHERE tenant_id=? AND client_id=? AND account_id=? ORDER BY created_at DESC, rowid DESC LIMIT 1', scope.tenantId, scope.clientId, a.account_id);
+    const action = one<{ kind: string; state: string }>(db, "SELECT kind, state FROM proposed_actions WHERE tenant_id=? AND client_id=? AND account_id=? AND kind <> 'note_writeback' ORDER BY created_at DESC, rowid DESC LIMIT 1", scope.tenantId, scope.clientId, a.account_id);
     const missing = one<{ n: number }>(db, `SELECT COUNT(*) n FROM facts f WHERE tenant_id=? AND client_id=? AND account_id=? AND status IN ('missing','conflicting')
       AND version=(SELECT MAX(version) FROM facts g WHERE g.tenant_id=f.tenant_id AND g.client_id=f.client_id AND g.account_id=f.account_id AND g.fact_key=f.fact_key)`, scope.tenantId, scope.clientId, a.account_id)!.n;
     const conflicting = one<{ n: number }>(db, `SELECT COUNT(*) n FROM facts f WHERE tenant_id=? AND client_id=? AND account_id=? AND status='conflicting'
@@ -198,7 +199,7 @@ function ensureNoActionInFlight(db: Db, scope: Scope, accountId: string) {
 
 export function investigate(db: Db, scope: Scope, accountId: string) {
   requirePerm(scope, 'investigate');
-  ensureNotPaused(db, scope);
+  ensureNotPaused(db, scope, accountId);
   return tx(db, () => {
     const a = getAccountRow(db, scope, accountId);
     ensureNoActionInFlight(db, scope, accountId);
@@ -215,7 +216,7 @@ const CALL_STATES = ['queued', 'dialing', 'ivr', 'hold', 'representative', 'wrap
 
 export function simulateCall(db: Db, scope: Scope, accountId: string) {
   requirePerm(scope, 'investigate');
-  ensureNotPaused(db, scope);
+  ensureNotPaused(db, scope, accountId);
   return tx(db, () => {
     const a = getAccountRow(db, scope, accountId);
     if (a.state === 'blocked') throw conflict('identity_blocked', 'Identity conflict: calls are blocked until the account identity is resolved');
@@ -331,7 +332,7 @@ export function evaluateAndPropose(db: Db, scope: Scope, accountId: string, cont
       eventType: 'proposal_superseded', details: { previousState: s.state, newRevision: a.revision } });
   }
   // Same revision already evaluated with an open proposal: nothing new to decide.
-  const open = one<{ action_id: string }>(db, `SELECT action_id FROM proposed_actions WHERE tenant_id=? AND client_id=? AND account_id=? AND state IN ('awaiting_review') AND expected_revision=?`,
+  const open = one<{ action_id: string }>(db, `SELECT action_id FROM proposed_actions WHERE tenant_id=? AND client_id=? AND account_id=? AND state IN ('awaiting_review') AND expected_revision=? AND kind <> 'note_writeback'`,
     scope.tenantId, scope.clientId, accountId, a.revision);
 
   const identityFalse = facts.get('identityVerified')?.status === 'verified' && facts.get('identityVerified')?.value === false;
