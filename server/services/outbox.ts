@@ -13,6 +13,7 @@ import { afterReceipt, tickFollowups } from './followup.ts';
 import { holdRow, outboxDims } from './holds.ts';
 import { ConnectorTimeout, LiveExecutionDisabled, PreflightFailed, connectorFor, signWebhook, WEBHOOK_SECRET, type SubmitResult } from '../connectors/executors.ts';
 import { AppError } from '../util.ts';
+import { openVerbalRequests } from './verbal-requests.ts';
 
 const LEASE_SECONDS = 30;
 const MAX_ATTEMPTS = 3;
@@ -99,6 +100,7 @@ export function tick(db: Db): TickReport {
       if (hashJson(JSON.parse(a.payload)) !== a.payload_sha256) problems.push('payload integrity check failed');
       if (acct.revision !== a.expected_revision || (decision && decision.account_revision !== acct.revision)) problems.push(`account revision changed (${a.expected_revision} -> ${acct.revision})`);
       if (decision && !approverStillAuthorized(db, decision.actor_id, o.tenant_id, o.client_id, a.kind)) problems.push('approver no longer holds the reviewer role');
+      if (openVerbalRequests(db, { tenantId: o.tenant_id, clientId: o.client_id }, a.account_id, a.kind).length) problems.push('the payer accepted the same request verbally on a call and it is not reconciled (ADR 0060)');
       if (problems.length) {
         setOutbox(db, o, { state: 'blocked', last_error: problems.join('; ') });
         if (a.state === 'approved') setAction(db, o, 'stale_blocked');

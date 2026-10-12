@@ -8,6 +8,7 @@ import { can, requirePerm, type Scope } from './auth.ts';
 import { loadRule } from './rules.ts';
 import { getAccountRow } from './workflow.ts';
 import { ruleRunnableForApproval } from './scenario.ts';
+import { isGuardedKind, openVerbalRequests } from './verbal-requests.ts';
 import type { RuleDefinition } from '../../shared/rules/catalog.ts';
 
 export interface ActionRow {
@@ -51,6 +52,12 @@ export function approvalChecks(db: Db, scope: Scope, action: ActionRow): Check[]
     { id: 'permitted', label: 'Action is permitted by the rule and not prohibited', pass: def.actions.some((a) => a.kind === action.kind && a.risk !== 'abstain') && !def.prohibitedActions.includes(action.kind) },
     { id: 'rule', label: `Rule ${runRow.rule_id} v${runRow.rule_version} is runnable in this environment (synthetic: draft allowed)`, pass: runnable.pass, detail: runnable.detail },
   ];
+  // Cross-channel duplicate guard (ADR 0060): a request the payer already accepted verbally is not sent again.
+  if (isGuardedKind(action.kind)) {
+    const open = openVerbalRequests(db, scope, action.account_id, action.kind);
+    checks.push({ id: 'no_open_verbal_request', label: 'No unreconciled verbal request of the same class on a payer call', pass: open.length === 0,
+      detail: open.length ? `Call ${open.map((v) => v.callId).join(', ')}: the payer accepted this request verbally on ${open[0].acceptedAt.slice(0, 10)}; wait for a receipt or adjudication, or release it with a reason` : undefined });
+  }
   return checks;
 }
 
