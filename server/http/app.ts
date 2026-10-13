@@ -16,11 +16,14 @@ import { loadRule } from '../services/rules.ts';
 import { verifyChain } from '../services/audit.ts';
 import { outcomeLabel } from '../../shared/rules/registry.ts';
 import { MODULES } from './modules.ts';
+import { authenticateKey, keyScope, keyScopes, KEY_PREFIX, recordKeyRequest } from '../services/access.ts';
 
 export const ENVIRONMENT = 'synthetic' as const;
 
 export interface Ctx { req: IncomingMessage; params: Record<string, string>; query: URLSearchParams; raw: string; body: any }
 export type Handler = (ctx: Ctx) => unknown;
+/** A non-JSON response (e.g. TwiML for a telephony provider webhook, ADR 0070). */
+export class RawResponse { contentType: string; text: string; constructor(contentType: string, text: string) { this.contentType = contentType; this.text = text; } }
 
 // Feature modules register their routes through this surface (see server/http/modules.ts).
 export interface ModuleApi {
@@ -60,8 +63,17 @@ export function createApp(db: Db, opts: { staticDir?: string } = {}): Server {
     routes.push({ method, pattern, keys, handler });
   };
 
-  const ident = (ctx: Ctx) => authenticate(db, (ctx.req.headers.authorization ?? '').replace(/^Bearer /, '') || undefined);
-  const scoped = (ctx: Ctx): Scope => resolveScope(db, ident(ctx), header(ctx, 'x-tenant'), header(ctx, 'x-client'));
+  const ident = (ctx: Ctx) => {
+    const token = (ctx.req.headers.authorization ?? '').replace(/^Bearer /, '') || undefined;
+    return token?.startsWith(KEY_PREFIX) ? authenticateKey(db, token) : authenticate(db, token); // named API keys, ADR 0080
+  };
+  const scoped = (ctx: Ctx): Scope => {
+    const id = ident(ctx);
+    if (!id.apiKey) return resolveScope(db, id, header(ctx, 'x-tenant'), header(ctx, 'x-client'));
+    const s = keyScope(db, id, header(ctx, 'x-tenant') ?? '', header(ctx, 'x-client') ?? '');
+    recordKeyRequest(db, s, ctx.req.method ?? '', new URL(ctx.req.url ?? '/', 'http://localhost').pathname);
+    return s;
+  };
   const header = (ctx: Ctx, k: string) => { const v = ctx.req.headers[k]; return Array.isArray(v) ? v[0] : v; };
 
   // ---- public / development identity
@@ -73,7 +85,7 @@ export function createApp(db: Db, opts: { staticDir?: string } = {}): Server {
   });
   route('GET', '/api/me', (ctx) => {
     const id = ident(ctx);
-    return { ...id, scopes: listScopes(db, id.userId), environment: ENVIRONMENT, liveActions: 'disabled' };
+    return { userId: id.userId, displayName: id.displayName, scopes: id.apiKey ? keyScopes(db, id.userId) : listScopes(db, id.userId), environment: ENVIRONMENT, liveActions: 'disabled' };
   });
 
   // ---- queue and accounts
@@ -181,9 +193,12 @@ export function createApp(db: Db, opts: { staticDir?: string } = {}): Server {
       if (!match) throw notFound('Route');
       const raw = req.method === 'POST' ? await readBody(req) : '';
       let body: unknown = null;
-      if (raw) { try { body = JSON.parse(raw); } catch { throw invalid('Body must be JSON'); } }
+      const form = /^application\/x-www-form-urlencoded/i.test(String(req.headers['content-type'] ?? ''));
+      if (raw && form) body = Object.fromEntries(new URLSearchParams(raw));
+      else if (raw) { try { body = JSON.parse(raw); } catch { throw invalid('Body must be JSON'); } }
       const params = Object.fromEntries(match.r.keys.map((k, i) => [k, decodeURIComponent(match.m![i + 1])]));
       const out = await match.r.handler({ req, params, query: url.searchParams, raw, body });
+      if (out instanceof RawResponse) { res.writeHead(200, { 'content-type': out.contentType, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' }); res.end(out.text); return; }
       send(res, 200, out ?? { ok: true });
     } catch (err) {
       if (err instanceof AppError) return send(res, err.status, { error: { code: err.code, message: err.message, details: err.details ?? null } });

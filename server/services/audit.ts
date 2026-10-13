@@ -3,6 +3,7 @@
 import { type Db, all, one, run } from '../db/db.ts';
 import { canonicalJson, newId, nowIso, sha256 } from '../util.ts';
 import { analyticsFromAudit } from './analytics.ts';
+import { notifyFromAudit } from './notifications.ts';
 
 export interface AuditInput {
   tenantId: string;
@@ -32,6 +33,7 @@ export function audit(db: Db, e: AuditInput): string {
     e.tenantId, e.clientId, eventId, e.actorId, e.objectType, e.objectId, e.accountId ?? null, e.eventType, eventAt,
     canonicalJson(body.details), prevHash, eventHash);
   analyticsFromAudit(db, e); // product analytics (opaque ids only), same transaction
+  notifyFromAudit(db, e, eventId); // notification outbox (opaque ids only), same transaction (ADR 0070)
   return eventId;
 }
 

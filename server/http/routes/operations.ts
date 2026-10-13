@@ -10,6 +10,7 @@ import { captureCommitment, commitmentsFor, completeFollowup, currentPolicy, lis
 import { exportLedger, importCash, importRemittance, listLedger, remittanceView } from '../../services/outcomes.ts';
 import { listWritebacks, proposeWriteback, readBackNow, reviewWriteback, writebackTarget } from '../../services/writeback.ts';
 import { controlsView } from '../../services/holds.ts';
+import { openPayload } from '../../services/sealed-store.ts';
 import { setPause } from '../../services/controls.ts';
 import { computeKpis, economics } from '../../services/kpis.ts';
 import { correctPmNote, PM_FAULTS, setPmFault, touchPmRecord, type PmFault } from '../../connectors/sim-pm.ts';
@@ -77,7 +78,7 @@ export function register({ db, route, scoped }: ModuleApi): void {
     const r = one<{ idempotency_key: string; payload: string }>(db, `SELECT o.idempotency_key, p.payload FROM action_outbox o JOIN proposed_actions p USING (tenant_id, client_id, action_id)
       WHERE o.tenant_id=? AND o.client_id=? AND o.action_id=? AND o.connector='sim_pm'`, s.tenantId, s.clientId, ctx.params.actionId);
     if (!r) throw notFound('Write-back dispatch');
-    if (!correctPmNote(db, r.idempotency_key, JSON.parse(r.payload).note.text)) throw conflict('no_note', 'The simulated PM holds no note for this write-back');
+    if (!correctPmNote(db, r.idempotency_key, openPayload(r.payload).note.text)) throw conflict('no_note', 'The simulated PM holds no note for this write-back');
     return { corrected: true, note: 'Simulated PM administrator restored the approved text. Run read-back to reconcile.' };
   });
 
@@ -95,7 +96,7 @@ export function register({ db, route, scoped }: ModuleApi): void {
       WHERE p.tenant_id=? AND p.client_id=? AND p.kind='clarify_allocation' AND o.state IN ('accepted','confirmed')`, s.tenantId, s.clientId);
     const d = today();
     const lines = rows.map((r) => {
-      const req = JSON.parse(r.payload).request;
+      const req = openPayload(r.payload).request;
       const allowed = (req.expectedDeductibleCents ?? 0) + (req.differenceCents ?? 0);
       return { claimReference: r.claim_reference, payerId: r.payer_id, lineNumber: 1, adjudicatedDate: d, status: 'corrected', allowedCents: allowed,
         paidCents: allowed - (req.expectedDeductibleCents ?? 0), adjustments: req.expectedDeductibleCents ? [{ group: 'PR', carc: '1', amountCents: req.expectedDeductibleCents }] : [] };

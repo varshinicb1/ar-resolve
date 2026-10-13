@@ -46,6 +46,8 @@ export interface QuestionPlan {
     verbalAcceptance: { questionId: string; turnSeq: number } | null;
   };
   verification?: { answerKey: string; verdict: string; detail: string }[];
+  /** Set when the recording gate allowed this call to be recorded (ADR 0080): the opening must speak the disclosure line. */
+  recording?: { required: true; disclosureLine: string; policyVersion: number; policySha256: string; consentMode: string };
 }
 
 export interface PlanInputs {

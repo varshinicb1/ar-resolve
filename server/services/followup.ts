@@ -6,6 +6,8 @@
 import { type Db, all, one, run, tx } from '../db/db.ts';
 import { canonicalJson, conflict, invalid, newId, notFound, nowIso } from '../util.ts';
 import { audit } from './audit.ts';
+import { open as openSealed } from './phi.ts';
+import { readSealedJson } from './sealed-store.ts'; // tombstoned content reads as { tombstone } (ADR 0080)
 import { requirePerm, type Scope } from './auth.ts';
 import { addDays, computeDue, dayDiff, isDate, resolveCalendar } from './calendar.ts';
 import { recordLedger } from './outcomes.ts';
@@ -85,7 +87,7 @@ export function captureCommitment(db: Db, scope: Scope, accountId: string, body:
   return tx(db, () => {
     const ev = one<EvidenceRow>(db, 'SELECT * FROM evidence WHERE tenant_id=? AND client_id=? AND account_id=? AND evidence_id=?', scope.tenantId, scope.clientId, accountId, String(body.evidenceId ?? ''));
     if (!ev) throw notFound('Evidence on this account');
-    const content = JSON.parse(ev.content);
+    const content = readSealedJson(ev.content);
     let locator: Record<string, unknown>;
     let quote: string;
     if (ev.kind === 'call_transcript') {
@@ -173,7 +175,7 @@ export function afterReceipt(db: Db, o: { tenant_id: string; client_id: string; 
   recordLedger(db, actor, { accountId, actionId: o.action_id, entryType: 'request_accepted', attribution: 'not_applicable',
     attributionReason: 'The payer accepted the request for review. This is not an adjudication or a payment.', sourceType: 'receipt', sourceId: evidenceId, evidenceId });
   const ev = one<EvidenceRow>(db, 'SELECT * FROM evidence WHERE tenant_id=? AND client_id=? AND evidence_id=?', o.tenant_id, o.client_id, evidenceId)!;
-  const content = JSON.parse(ev.content);
+  const content = readSealedJson(ev.content);
   let commitmentId: string | null = null;
   const c = content.commitment;
   if (c && typeof c === 'object') {

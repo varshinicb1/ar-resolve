@@ -191,3 +191,9 @@ tr.call-attention td { background: var(--danger-bg); }
 .int-check { display: flex; gap: 8px; align-items: flex-start; font-weight: 500; }
 .int-check input { min-height: 0; margin-top: 4px; }
 @media (max-width: 760px) { .int-actions { flex-wrap: wrap; justify-content: flex-start; } }
+/* Governance workstream (ADR 0070: PHI readiness, vendor/BAA register, notifications) */
+.gov-checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.gov-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.gov-form label { display: block; font-size: 13px; }
+.gov-form input, .gov-form select { width: 100%; max-width: 100%; box-sizing: border-box; margin-top: 4px; }
+.gov-wrap { overflow-wrap: anywhere; max-width: 320px; }

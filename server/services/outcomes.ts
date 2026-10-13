@@ -7,6 +7,7 @@ import { canonicalJson, hashJson, invalid, newId, nowIso, sha256 } from '../util
 import { audit } from './audit.ts';
 import { requirePerm, type Scope } from './auth.ts';
 import { addEvidence } from './evidence.ts';
+import { openPayload } from './sealed-store.ts';
 import { dayDiff, isDate } from './calendar.ts';
 
 export interface Actor { tenantId: string; clientId: string; userId: string }
@@ -279,7 +280,7 @@ function reconcileLine(db: Db, scope: Scope, batchId: string, l: RemittanceLine,
     return { remitLineId, matchStatus: 'matched', outcome: 'changed', reopened: true };
   }
   // The request asked for a specific expected deductible; reaching it resolves the account operationally.
-  const expected = inWindow ? (JSON.parse(inWindow.payload).request?.expectedDeductibleCents as number | undefined) : undefined;
+  const expected = inWindow ? (openPayload(inWindow.payload).request?.expectedDeductibleCents as number | undefined) : undefined;
   if (attribution === 'attributable' && typeof expected === 'number' && ded === expected) {
     run(db, `UPDATE accounts SET state='resolved', updated_at=? WHERE tenant_id=? AND client_id=? AND account_id=?`, nowIso(), scope.tenantId, scope.clientId, accountId);
     audit(db, { tenantId: scope.tenantId, clientId: scope.clientId, actorId: scope.userId, objectType: 'account', objectId: accountId, accountId,

@@ -6,6 +6,7 @@ import { AppError, conflict, forbidden, hashJson, invalid, newId, notFound, nowI
 import { audit } from './audit.ts';
 import { can, requirePerm, type Scope } from './auth.ts';
 import { loadRule } from './rules.ts';
+import { openPayload } from './sealed-store.ts';
 import { getAccountRow } from './workflow.ts';
 import { ruleRunnableForApproval } from './scenario.ts';
 import { isGuardedKind, openVerbalRequests } from './verbal-requests.ts';
@@ -33,7 +34,7 @@ export function approvalChecks(db: Db, scope: Scope, action: ActionRow): Check[]
     'SELECT inputs, created_by, rule_id, rule_version FROM workflow_runs WHERE tenant_id=? AND client_id=? AND run_id=?', scope.tenantId, scope.clientId, action.run_id)!;
   const inputs = JSON.parse(runRow.inputs) as { factRefs: { key: string; used: boolean; status: string; optional?: boolean }[] };
   const def: RuleDefinition = loadRule(db, runRow.rule_id, runRow.rule_version).definition;
-  const payload = JSON.parse(action.payload);
+  const payload = openPayload(action.payload); // sealed free text opened; hash checked below (ADR 0080)
   // Optional facts (a handled branch when absent, ADR 0020) never block approval.
   const unusable = inputs.factRefs.filter((f) => !f.used && !f.optional);
   const runnable = ruleRunnableForApproval(db, scope, runRow.rule_id, runRow.rule_version);

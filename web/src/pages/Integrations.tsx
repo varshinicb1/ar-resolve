@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useState } from 'react';
 import { api, errorText, when } from '../api.ts';
 import { Heading, Panel, toast } from '../ui.tsx';
 import { go } from '../App.tsx';
+import { GovernancePanels } from './Governance.tsx';
 
 interface Health { status: string; detail?: string; lastSuccess: string | null; errorRate: number | null; avgLatencyMs: number | null; p95LatencyMs: number | null; events: number; circuit: string }
 interface Connector {
@@ -208,6 +209,7 @@ export function Integrations({ roles }: { roles: string[] }) {
             ))}</tbody></table></div>
         )}
       </Panel>
+      <GovernancePanels />
     </>
   );
 }

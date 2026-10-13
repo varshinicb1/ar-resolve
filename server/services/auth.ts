@@ -21,6 +21,14 @@ export const PERMISSIONS = {
   rule_author: ['reviewer', 'supervisor'],
   rule_approve: ['rule_approver'],
   integration_admin: ['supervisor'],
+  // ADR 0080 (clinic-receptionist follow-ups)
+  manage_api_keys: ['supervisor'],
+  manage_retention: ['supervisor'],
+  request_data_deletion: ['supervisor'],
+  approve_data_deletion: ['supervisor', 'reviewer'], // a second person; never the requester
+  manage_phi_keys: ['supervisor'],
+  manage_recording: ['supervisor'],
+  view_recordings: ['supervisor', 'reviewer', 'auditor'],
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Permission = keyof typeof PERMISSIONS;
@@ -31,12 +39,21 @@ export interface Scope {
   tenantId: string;
   clientId: string;
   roles: Role[];
+  /** Set when the request was authenticated by a named API key (ADR 0080). */
+  serviceKeyId?: string;
 }
 
 export interface Identity {
   userId: string;
   displayName: string;
+  /** Named API key (service account), ADR 0080. Absent for the development identity. */
+  apiKey?: { keyId: string; tenantId: string; clientId: string; roles: Role[]; createdBy: string };
 }
+
+// Permissions a service key never holds, whatever its roles: approvals, logic changes and
+// administration stay with named people (ADR 0080).
+export const HUMAN_ONLY: readonly Permission[] = ['review', 'approve_writeback', 'rule_author', 'rule_approve', 'integration_admin', 'manage_api_keys',
+  'manage_retention', 'request_data_deletion', 'approve_data_deletion', 'manage_phi_keys', 'manage_recording'];
 
 const SESSION_HOURS = 12;
 
@@ -90,6 +107,7 @@ function extraRoles(db: Db, userId: string) {
 }
 
 export function can(scope: Scope, perm: Permission): boolean {
+  if (scope.serviceKeyId && HUMAN_ONLY.includes(perm)) return false;
   return scope.roles.some((r) => (PERMISSIONS[perm] as readonly Role[]).includes(r));
 }
 

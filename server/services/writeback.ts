@@ -7,6 +7,8 @@
 import { type Db, all, one, run, tx } from '../db/db.ts';
 import { canonicalJson, conflict, forbidden, hashJson, invalid, newId, notFound, now, nowIso, sha256, AppError } from '../util.ts';
 import { audit } from './audit.ts';
+import { open as openSealed, seal } from './phi.ts';
+import { openPayload, sealPayload } from './sealed-store.ts';
 import { can, requirePerm, type Scope } from './auth.ts';
 import { getAccountRow, PROPOSAL_TTL_HOURS } from './workflow.ts';
 import { reconcile, type OutboxRow } from './outbox.ts';
@@ -25,7 +27,7 @@ function latestSource(db: Db, scope: Scope, accountId: string, sourceActionId?: 
     ? one<ActionRow>(db, `SELECT * FROM proposed_actions WHERE tenant_id=? AND client_id=? AND account_id=? AND action_id=? AND kind <> 'note_writeback'`, scope.tenantId, scope.clientId, accountId, sourceActionId)
     : one<ActionRow>(db, `SELECT * FROM proposed_actions WHERE tenant_id=? AND client_id=? AND account_id=? AND kind <> 'note_writeback' ORDER BY created_at DESC, rowid DESC LIMIT 1`, scope.tenantId, scope.clientId, accountId);
   if (!r) throw conflict('no_draft', 'There is no system-drafted note for this account yet. Run an investigation first.');
-  return r;
+  return { ...r, note_draft: openSealed(r.note_draft) };
 }
 
 // What a write-back would touch, before anything is proposed.
@@ -72,9 +74,9 @@ export function proposeWriteback(db: Db, scope: Scope, accountId: string, body: 
       audit(db, { tenantId: scope.tenantId, clientId: scope.clientId, actorId: scope.userId, objectType: 'action', objectId: prev.action_id, accountId, eventType: 'proposal_superseded', details: { by: actionId, kind: 'note_writeback' } });
     }
     run(db, 'INSERT INTO proposed_actions VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', scope.tenantId, scope.clientId, actionId, accountId, src.run_id, a.revision,
-      'note_writeback', 'administrative_note', 'sim_pm', canonicalJson(payload), hashJson(payload), text, 'awaiting_review', expires, scope.userId, nowIso(), nowIso());
-    run(db, 'INSERT INTO note_writebacks VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)', scope.tenantId, scope.clientId, actionId, accountId, src.action_id, original, sha256(original),
-      text, sha256(text), edited ? 1 : 0, edited ? editReason : null, edited ? scope.userId : null, scope.userId, nowIso());
+      'note_writeback', 'administrative_note', 'sim_pm', sealPayload(payload), hashJson(payload), seal(text), 'awaiting_review', expires, scope.userId, nowIso(), nowIso());
+    run(db, 'INSERT INTO note_writebacks VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)', scope.tenantId, scope.clientId, actionId, accountId, src.action_id, seal(original), sha256(original),
+      seal(text), sha256(text), edited ? 1 : 0, edited ? editReason : null, edited ? scope.userId : null, scope.userId, nowIso());
     audit(db, { tenantId: scope.tenantId, clientId: scope.clientId, actorId: scope.userId, objectType: 'action', objectId: actionId, accountId,
       eventType: 'writeback_proposed', details: { payloadSha256: hashJson(payload), pmRecordId: rec.pmRecordId, recordVersion: rec.recordVersion, field: FIELD, edited, editReason: edited ? editReason : null, expectedRevision: a.revision } });
     return { actionId, payloadSha256: hashJson(payload), accountRevision: a.revision, edited };
@@ -100,7 +102,7 @@ export function reviewWriteback(db: Db, scope: Scope, actionId: string, input: W
     if (act.created_by === scope.userId) throw forbidden('Separation of duties: the person who drafted or edited the note cannot approve it');
     if (input.decision === 'approved') {
       if (act.expires_at <= nowIso()) throw new AppError(422, 'prerequisites_failed', 'This write-back draft has expired');
-      const payload = JSON.parse(act.payload);
+      const payload = openPayload(act.payload);
       if (hashJson(payload) !== act.payload_sha256) throw new AppError(422, 'prerequisites_failed', 'Payload integrity check failed');
       const rec = pmRecord(db, scope.tenantId, scope.clientId, act.account_id);
       if (!rec || rec.recordVersion !== payload.destination.recordVersion) {
@@ -156,12 +158,13 @@ export function listWritebacks(db: Db, scope: Scope, accountId: string) {
     `SELECT p.*, w.original_draft, w.final_text, w.edited, w.edit_reason, w.edited_by, w.source_action_id FROM proposed_actions p
      JOIN note_writebacks w ON w.tenant_id=p.tenant_id AND w.client_id=p.client_id AND w.action_id=p.action_id
      WHERE p.tenant_id=? AND p.client_id=? AND p.account_id=? ORDER BY p.created_at DESC, p.rowid DESC`, scope.tenantId, scope.clientId, accountId);
-  return rows.map((r) => {
+  return rows.map((raw) => {
+    const r = { ...raw, original_draft: openSealed(raw.original_draft), final_text: openSealed(raw.final_text) };
     const outbox = one<{ state: string; attempts: number; external_reference: string | null; last_error: string | null; idempotency_key: string; held_at: string | null; hold_reason: string | null; receipt_evidence_id: string | null }>(db,
       'SELECT state, attempts, external_reference, last_error, idempotency_key, held_at, hold_reason, receipt_evidence_id FROM action_outbox WHERE tenant_id=? AND client_id=? AND action_id=?', scope.tenantId, scope.clientId, r.action_id);
     const decisions = all<{ decision: string; actor_id: string; rationale: string; created_at: string }>(db,
       'SELECT decision, actor_id, rationale, created_at FROM review_decisions WHERE tenant_id=? AND client_id=? AND action_id=? ORDER BY created_at', scope.tenantId, scope.clientId, r.action_id);
-    const payload = JSON.parse(r.payload);
+    const payload = openPayload(r.payload);
     const rb = outbox && outbox.state !== 'pending' ? readBack(db, outbox.idempotency_key, payload) : null;
     return {
       actionId: r.action_id, state: r.state, displayState: displayState(r.state, outbox), payload, payloadSha256: r.payload_sha256, expectedRevision: r.expected_revision,

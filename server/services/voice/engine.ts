@@ -25,6 +25,10 @@ import {
 } from './extract.ts';
 import { nextQuestion, promptFor, TERMINAL_QUESTION, type PlannedQuestion, type QuestionPlan } from './plan.ts';
 import { ACTIVE_CALL_STATES, currentPolicy, evaluateGate, policyVersion } from './policy.ts';
+import { guardInbound, guardOutbound, type GuardVerdict } from '../guard.ts';
+import { open as openText, seal } from '../phi.ts';
+import { speakDollars, speakIsoDate, speakReference } from './spoken.ts';
+import { finishSimulatedRecording, recordingGate, startSimulatedRecording } from '../recording.ts';
 
 export const TERMINAL_STATES = ['completed', 'dropped', 'cancelled', 'failed'];
 const AUTOMATED_STATES = ACTIVE_CALL_STATES.filter((s) => s !== 'handoff_to_human');
@@ -98,7 +102,7 @@ function nextSeq(db: Db, r: CallRow): number {
 function event(db: Db, w: Work, e: { kind: string; speaker?: string | null; text?: string | null; questionId?: string | null; data?: Record<string, unknown> }): number {
   const seq = nextSeq(db, w.row);
   run(db, 'INSERT INTO voice_call_events VALUES (?,?,?,?,?,?,?,?,?,?,?)', w.row.tenant_id, w.row.client_id, w.row.call_id, seq, e.kind, e.speaker ?? null,
-    e.text ?? null, e.questionId ?? null, w.row.sim_elapsed_ms, canonicalJson(e.data ?? {}), nowIso());
+    e.text === null || e.text === undefined ? null : seal(e.text), e.questionId ?? null, w.row.sim_elapsed_ms, canonicalJson(e.data ?? {}), nowIso());
   return seq;
 }
 
@@ -125,8 +129,42 @@ function addTime(w: Work, seconds: number, bucket: 'ivr' | 'hold' | 'talk') {
 
 // Agent speaks (optional), the simulated line responds; every produced event is
 // appended. Returns the seqs of representative turns and the raw sim events.
+// Ported Guard (ADR 0070): an outbound utterance that the Guard blocks is never spoken; the step
+// stops and the call is handed to a human. Inbound representative turns are flagged only.
+class GuardHalt extends Error {
+  verdict: GuardVerdict;
+  constructor(v: GuardVerdict) { super(v.hits.map((h) => h.why).join('; ')); this.verdict = v; }
+}
+
+function sourcedContext(db: Db, w: Work) {
+  const cents = new Set<number>([w.account.balance_cents]);
+  for (const t of all<{ text: string | null }>(db, `SELECT text FROM voice_call_events WHERE tenant_id=? AND client_id=? AND call_id=? AND speaker='rep'`, w.row.tenant_id, w.row.client_id, w.row.call_id)) {
+    for (const m of findMoney(openText(t.text ?? ''))) cents.add(m.cents);
+  }
+  return { sourcedCents: cents, sourcedDates: new Set<string>([w.account.service_date]) };
+}
+
+function guardAgent(db: Db, w: Work, action: AgentAction, text: string, questionId: string | null) {
+  const v = guardOutbound(text, { ...sourcedContext(db, w), intent: action.type === 'say' ? action.intent : action.type });
+  if (v.action === 'allow') return;
+  const data = { direction: 'outbound', guard: v.version, profile: v.profile, modes: v.modes, rules: v.hits.map((h) => h.ruleId), questionId };
+  if (v.action === 'block') {
+    flag(db, w, 'guard_blocked_utterance', `Guard withheld an agent utterance (${v.hits.map((h) => h.why).join('; ')}). Nothing was said; the call goes to a human.`, data);
+    throw new GuardHalt(v);
+  }
+  flag(db, w, 'guard_outbound_warning', `Guard warning on an agent utterance: ${v.hits.map((h) => h.why).join('; ')}. Spoken; recorded for reviewers.`, data);
+}
+
+function guardRep(db: Db, w: Work, seq: number, text: string) {
+  const v = guardInbound(text);
+  if (v.action === 'allow') return;
+  flag(db, w, 'guard_inbound_warning', `Guard: representative turn ${seq} flagged (${v.hits.map((h) => h.why).join('; ')}). Stored as evidence only; no effect on actions.`,
+    { direction: 'inbound', guard: v.version, profile: v.profile, turnSeq: seq, modes: v.modes, rules: v.hits.map((h) => h.ruleId), severity: v.severity });
+}
+
 function exchange(db: Db, w: Work, action: AgentAction, agentText: string | null, questionId: string | null = null) {
   const talkBucket = ['dialing', 'ivr'].includes(w.row.state) ? 'ivr' : 'talk';
+  if (agentText && action.type !== 'ivr_input') guardAgent(db, w, action, agentText, questionId);
   if (agentText) {
     addTime(w, secondsFor(agentText), talkBucket);
     event(db, w, { kind: action.type === 'ivr_input' ? 'dtmf' : 'turn', speaker: 'agent', text: agentText, questionId, data: { action: action.type } });
@@ -139,7 +177,7 @@ function exchange(db: Db, w: Work, action: AgentAction, agentText: string | null
       case 'ivr': addTime(w, e.seconds, 'ivr'); event(db, w, { kind: 'ivr', speaker: 'ivr', text: e.text }); break;
       case 'hold': addTime(w, e.seconds, 'hold'); event(db, w, { kind: 'hold', text: `${e.text} (${e.seconds}s)`, data: { seconds: e.seconds } }); break;
       case 'connected': event(db, w, { kind: 'system', text: `Representative connected (${e.repName})`, data: { repName: e.repName } }); break;
-      case 'rep': addTime(w, e.seconds, 'talk'); repTurns.push({ seq: event(db, w, { kind: 'turn', speaker: 'rep', text: e.text, questionId }), text: e.text }); break;
+      case 'rep': { addTime(w, e.seconds, 'talk'); const seq = event(db, w, { kind: 'turn', speaker: 'rep', text: e.text, questionId }); repTurns.push({ seq, text: e.text }); guardRep(db, w, seq, e.text); break; }
       case 'transfer': event(db, w, { kind: 'system', text: e.text, data: { transfer: true } }); break;
       case 'ended': event(db, w, { kind: 'system', text: `Line ended by ${e.by}: ${e.reason.replace(/_/g, ' ')}`, data: { ended: true, by: e.by, reason: e.reason } }); break;
     }
@@ -299,9 +337,13 @@ function applyAnswer(db: Db, w: Work, qn: PlannedQuestion, turns: { seq: number;
   w.row.pending_read_back = qn.id;
 }
 
+// Read-back in words (ADR 0080, ported from clinic-receptionist src/spoken.ts): text-to-speech cannot
+// misread "$425.00" or merge the characters of a reference. The Guard turns the words back into
+// digits before its identifier and sourced-figure checks (guard.ts).
 function formatForReadBack(qn: PlannedQuestion, value: unknown): string {
-  if (qn.expects === 'money') return speakMoney(value as number);
-  return spellReference(String(value));
+  if (qn.expects === 'money') return speakDollars(value as number);
+  if (qn.expects === 'date' && typeof value === 'string') return speakIsoDate(value);
+  return speakReference(String(value));
 }
 
 // ---------------------------------------------------------------- steps
@@ -337,6 +379,13 @@ function onLineEnded(db: Db, w: Work) {
 }
 
 export function stepCall(db: Db, w: Work): void {
+  try { stepCallInner(db, w); } catch (err) {
+    if (!(err instanceof GuardHalt)) throw err;
+    handoff(db, w, null, 'GUARD_BLOCKED_UTTERANCE', `Guard withheld an agent utterance: ${err.message}`);
+  }
+}
+
+function stepCallInner(db: Db, w: Work): void {
   const r = w.row;
   if (TERMINAL_STATES.includes(r.state) || r.state === 'handoff_to_human') return;
 
@@ -384,8 +433,14 @@ export function stepCall(db: Db, w: Work): void {
     case 'rep_connected': {
       if (r.cancel_requested) { transition(db, w, 'wrap_up'); return; }
       const pol = policyVersion(db, r.tenant_id, r.client_id, r.policy_version).definition;
-      const text = pol.disclosure.automationDisclosure + (pol.recording.enabled && pol.disclosure.announceRecording ? ' This call may be recorded.' : '');
+      // A recorded call (ADR 0080) speaks the client's recording disclosure line in the opening; recording starts only after it was spoken.
+      const rec = w.plan.recording;
+      const text = pol.disclosure.automationDisclosure + (rec ? ` ${rec.disclosureLine}` : pol.recording.enabled && pol.disclosure.announceRecording ? ' This call may be recorded.' : '');
       exchange(db, w, { type: 'say', intent: 'disclose', text }, text);
+      if (rec) {
+        const seq = one<{ s: number }>(db, "SELECT MAX(seq) s FROM voice_call_events WHERE tenant_id=? AND client_id=? AND call_id=? AND speaker='agent'", r.tenant_id, r.client_id, r.call_id)!.s;
+        startSimulatedRecording(db, { tenantId: r.tenant_id, clientId: r.client_id, callId: r.call_id, accountId: r.account_id, policyVersion: rec.policyVersion, policySha256: rec.policySha256, consentMode: rec.consentMode, disclosureSeq: seq });
+      }
       if (w.line.phase === 'ended') return onLineEnded(db, w);
       transition(db, w, 'authenticating');
       return;
@@ -474,13 +529,15 @@ function finish(db: Db, w: Work, state: string, reasonCode: string | null, outco
   for (const qn of w.plan.questions) if (!TERMINAL_QUESTION.includes(qn.status)) { qn.status = qn.status === 'asked' || qn.status === 'awaiting_read_back' ? 'unconfirmed' : 'skipped'; qn.note = qn.note ?? `Call ended (${state})`; }
   r.pending_read_back = null;
   transition(db, w, state, { reasonCode, outcome });
+  finishSimulatedRecording(db, { tenantId: r.tenant_id, clientId: r.client_id, callId: r.call_id, durationMs: r.sim_elapsed_ms }); // no-op unless recorded (ADR 0080)
   r.reason_code = reasonCode;
   r.outcome = outcome;
   r.ended_at = nowIso();
   const scope = workerScope(r);
   const answers = all<AnswerRow>(db, 'SELECT * FROM voice_answers WHERE tenant_id=? AND client_id=? AND call_id=? ORDER BY rowid', r.tenant_id, r.client_id, r.call_id);
   const events = all<{ seq: number; kind: string; speaker: string | null; text: string | null; question_id: string | null; sim_at_ms: number; data: string }>(db,
-    'SELECT seq, kind, speaker, text, question_id, sim_at_ms, data FROM voice_call_events WHERE tenant_id=? AND client_id=? AND call_id=? ORDER BY seq', r.tenant_id, r.client_id, r.call_id);
+    'SELECT seq, kind, speaker, text, question_id, sim_at_ms, data FROM voice_call_events WHERE tenant_id=? AND client_id=? AND call_id=? ORDER BY seq', r.tenant_id, r.client_id, r.call_id)
+    .map((e) => ({ ...e, text: e.text === null ? null : openText(e.text) }));
 
   // Verifier: compare captured fact values with current facts; missing references.
   const facts = currentFacts(db, scope, r.account_id);
@@ -554,6 +611,9 @@ function finish(db: Db, w: Work, state: string, reasonCode: string | null, outco
     }
     const confirmedRef = w.plan.questions.some((q) => (q.id === 'request_reference' && q.status === 'confirmed') || (q.id === 'reconcile_prior_request' && q.status === 'found'));
     run(db, 'UPDATE accounts SET state=?, updated_at=? WHERE tenant_id=? AND client_id=? AND account_id=?', confirmedRef ? 'awaiting_receipt' : 'receipt_uncertain', nowIso(), r.tenant_id, r.client_id, r.account_id);
+    // Notification hook (ADR 0070): an open verbal request until a receipt or adjudication reconciles it.
+    audit(db, { tenantId: r.tenant_id, clientId: r.client_id, actorId: 'system', objectType: 'voice_call', objectId: r.call_id, accountId: r.account_id,
+      eventType: 'verbal_request_recorded', details: { referenceConfirmed: confirmedRef } });
   } else if (evidenceId) {
     evaluateAndPropose(db, scope, r.account_id, { trigger: 'call', callId: r.call_id, interactionId, revisionBefore: before });
   }
@@ -564,7 +624,8 @@ function finish(db: Db, w: Work, state: string, reasonCode: string | null, outco
 function handoffPacket(db: Db, w: Work, reason: string) {
   const answers = all<AnswerRow>(db, 'SELECT * FROM voice_answers WHERE tenant_id=? AND client_id=? AND call_id=? ORDER BY rowid', w.row.tenant_id, w.row.client_id, w.row.call_id);
   const tail = all<{ seq: number; speaker: string | null; text: string | null }>(db,
-    `SELECT seq, speaker, text FROM voice_call_events WHERE tenant_id=? AND client_id=? AND call_id=? AND kind IN ('turn','ivr','system') ORDER BY seq DESC LIMIT 6`, w.row.tenant_id, w.row.client_id, w.row.call_id).reverse();
+    `SELECT seq, speaker, text FROM voice_call_events WHERE tenant_id=? AND client_id=? AND call_id=? AND kind IN ('turn','ivr','system') ORDER BY seq DESC LIMIT 6`, w.row.tenant_id, w.row.client_id, w.row.call_id).reverse()
+    .map((e) => ({ ...e, text: e.text === null ? null : openText(e.text) }));
   return {
     reason,
     identityContext: { externalId: w.account.external_id, claimReference: w.account.claim_reference, payerId: w.account.payer_id, providerId: w.account.provider_id, serviceDate: w.account.service_date, identityVerified: true },
@@ -581,7 +642,7 @@ function handoffPacket(db: Db, w: Work, reason: string) {
 function handoff(db: Db, w: Work, userId: string | null, reasonCode: string, reason: string) {
   const packet = handoffPacket(db, w, reason);
   w.adapter.transferCall(w.row.provider_call_id, { kind: 'human_queue', queue: `${w.row.client_id}-specialists` });
-  w.row.handoff = canonicalJson({ ...packet, by: userId ?? 'system', at: nowIso() });
+  w.row.handoff = seal(canonicalJson({ ...packet, by: userId ?? 'system', at: nowIso() }));
   w.row.assigned_to = userId;
   w.row.reason_code = reasonCode;
   transition(db, w, 'handoff_to_human', { reasonCode, by: userId ?? 'system' });
@@ -599,6 +660,7 @@ export function startCall(db: Db, scope: Scope, accountId: string, body: { idemp
   if (simScript && (!SYNTHETIC_ENVIRONMENT || !SIM_SCRIPTS[simScript])) throw invalid('Unknown simulator script');
   const out = tx(db, () => {
     const a = getAccountRow(db, scope, accountId);
+    if (one<{ deleted_at: string | null }>(db, 'SELECT deleted_at FROM accounts WHERE tenant_id=? AND client_id=? AND account_id=?', scope.tenantId, scope.clientId, accountId)?.deleted_at) throw conflict('account_deleted', 'This account was deleted at the owner\'s request (ADR 0080)');
     if (key) {
       const existing = one<CallRow>(db, 'SELECT * FROM voice_calls WHERE tenant_id=? AND client_id=? AND idempotency_key=?', scope.tenantId, scope.clientId, key);
       if (existing) {
@@ -615,6 +677,8 @@ export function startCall(db: Db, scope: Scope, accountId: string, body: { idemp
     }
     const callId = newId('vc');
     const idem = key ?? newId('idem');
+    const recGate = recordingGate(db, scope, 'sim_voice'); // ADR 0080: off by default; every gate must hold
+    if (recGate.allowed) gate.plan!.recording = { required: true, disclosureLine: recGate.disclosureLine, policyVersion: recGate.policy.version, policySha256: recGate.policy.sha256, consentMode: recGate.consentMode };
     const adapter = adapterFor(db, 'sim_voice');
     const pol = currentPolicy(db, scope.tenantId, scope.clientId);
     const started = adapter.startCall({ requestId: callId, tenantId: scope.tenantId, clientId: scope.clientId, accountRevision: a.revision, idempotencyKey: idem,
@@ -630,7 +694,7 @@ export function startCall(db: Db, scope: Scope, accountId: string, body: { idemp
     event(db, w, { kind: 'state', text: '→ queued', data: { from: null, to: 'queued', gate: gate.checks.map((c) => c.id), policyVersion: gate.policy.version } });
     audit(db, { tenantId: scope.tenantId, clientId: scope.clientId, actorId: scope.userId, objectType: 'voice_call', objectId: callId, accountId,
       eventType: 'voice_call_started', details: { destination: gate.line!.destination, policyVersion: gate.policy.version, plan: `${gate.plan!.planId}@${gate.plan!.version}`,
-        questions: gate.plan!.questions.map((q) => q.id), simulated: true, simScript } });
+        questions: gate.plan!.questions.map((q) => q.id), simulated: true, simScript, recording: recGate.allowed } });
     return { callId, state: 'queued', duplicate: false };
   });
   if ('refused' in out && out.refused) {
@@ -698,7 +762,7 @@ export function takeOver(db: Db, scope: Scope, callId: string, reason: string) {
     handoff(db, w, scope.userId, 'SPECIALIST_TAKEOVER', reason?.trim() || 'Specialist took over the call');
     w.row.assigned_to = scope.userId;
     save(db, w);
-    return { callId, state: w.row.state, handoff: JSON.parse(w.row.handoff!) };
+    return { callId, state: w.row.state, handoff: JSON.parse(openText(w.row.handoff!)) };
   });
 }
 

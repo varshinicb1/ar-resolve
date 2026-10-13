@@ -1,6 +1,9 @@
 // FHIR R4 read-only client for Coverage, ExplanationOfBenefit, Claim, ClaimResponse and
 // Patient (token only). No write interactions exist on this client.
-import type { BackendTokenSource } from './smart.ts';
+// ADR 0070: base URL vetted with safePublicHttpsUrl (ported from clinic-receptionist
+// src/fhir.ts safeFhirBase), redirect: 'manual' and a timeout on every request.
+import { REQUEST_TIMEOUT_MS, type BackendTokenSource } from './smart.ts';
+import { safePublicHttpsUrl } from '../safe-url.ts';
 
 export const READ_TYPES = ['Coverage', 'ExplanationOfBenefit', 'Claim', 'ClaimResponse', 'Patient'] as const;
 export type ReadType = (typeof READ_TYPES)[number];
@@ -16,11 +19,16 @@ export class FhirError extends Error {
 export class FhirReadClient {
   private base: string;
   private tokens: BackendTokenSource;
-  constructor(baseUrl: string, tokens: BackendTokenSource) { this.base = baseUrl.replace(/\/$/, ''); this.tokens = tokens; }
+  constructor(baseUrl: string, tokens: BackendTokenSource, opts: { allowLoopback?: boolean } = {}) {
+    const base = safePublicHttpsUrl(baseUrl, opts);
+    if (!base) throw new FhirError(400, 'FHIR base must be a public https:// URL');
+    this.base = base;
+    this.tokens = tokens;
+  }
 
   private async get(path: string): Promise<unknown> {
     const token = await this.tokens.get();
-    const r = await fetch(`${this.base}/${path}`, { headers: { authorization: `Bearer ${token}`, accept: 'application/fhir+json' } });
+    const r = await fetch(`${this.base}/${path}`, { headers: { authorization: `Bearer ${token}`, accept: 'application/fhir+json' }, redirect: 'manual', signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
     const body = await r.json().catch(() => null);
     if (!r.ok) throw new FhirError(r.status, `FHIR ${path.split('?')[0]} failed with ${r.status}`);
     return body;

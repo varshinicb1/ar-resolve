@@ -66,7 +66,7 @@ export async function startMockFhir(o: { clientId: string; kid: string; publicKe
     const outcome = (status: number, msg: string) => send(status, { resourceType: 'OperationOutcome', issue: [{ severity: 'error', code: 'processing', diagnostics: msg }] });
     try {
       if (url.pathname === '/.well-known/smart-configuration') return send(200, { token_endpoint: `${base}/token`, grant_types_supported: ['client_credentials'],
-        token_endpoint_auth_methods_supported: ['private_key_jwt'], token_endpoint_auth_signing_alg_values_supported: ['ES384'], scopes_supported: ALLOWED_SCOPES }, 'application/json');
+        token_endpoint_auth_methods_supported: ['private_key_jwt'], token_endpoint_auth_signing_alg_values_supported: ['ES384', 'RS384'], scopes_supported: ALLOWED_SCOPES }, 'application/json');
       if (url.pathname === '/token' && req.method === 'POST') {
         const chunks: Buffer[] = [];
         for await (const c of req) chunks.push(c as Buffer);

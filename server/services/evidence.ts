@@ -2,8 +2,10 @@
 // Source content is untrusted data: extractors read only typed fields at known
 // paths and never interpret free text as instructions.
 import { type Db, all, one, run } from '../db/db.ts';
-import { canonicalJson, invalid, newId, nowIso, sha256 } from '../util.ts';
+import { canonicalJson, conflict, invalid, newId, nowIso, sha256 } from '../util.ts';
 import { audit } from './audit.ts';
+import { open as openSealed, seal } from './phi.ts';
+import { readSealedJson } from './sealed-store.ts'; // tombstoned content reads as { tombstone } (ADR 0080)
 import type { Scope } from './auth.ts';
 import { extendedFact, extractEobSelection, extractExtended, validateFactValue } from '../../shared/rules/fact-catalog.ts';
 import { integrationObservations, isIntegrationKind, type IntegrationKind } from '../connectors/observations.ts';
@@ -115,6 +117,9 @@ export interface AddEvidenceInput {
 
 // Returns null when byte-identical content from the same source is already stored.
 export function addEvidence(db: Db, scope: Scope, e: AddEvidenceInput): { evidenceId: string; observations: number } | null {
+  if (one<{ deleted_at: string | null }>(db, 'SELECT deleted_at FROM accounts WHERE tenant_id=? AND client_id=? AND account_id=?', scope.tenantId, scope.clientId, e.accountId)?.deleted_at) {
+    throw conflict('account_deleted', 'This account was deleted at the owner\'s request; no new evidence is collected (ADR 0080)');
+  }
   const body = canonicalJson(e.content);
   const hash = sha256(body);
   const dup = one(db, 'SELECT 1 FROM evidence WHERE tenant_id=? AND client_id=? AND account_id=? AND sha256=? AND kind=?',
@@ -123,7 +128,7 @@ export function addEvidence(db: Db, scope: Scope, e: AddEvidenceInput): { eviden
   const evidenceId = newId('ev');
   const observedAt = nowIso();
   run(db, 'INSERT INTO evidence VALUES (?,?,?,?,?,?,?,?,?,?,?,?)', scope.tenantId, scope.clientId, e.accountId, evidenceId,
-    e.kind, e.title, e.source, body, hash, observedAt, e.effectiveAt ?? null, scope.userId);
+    e.kind, e.title, e.source, seal(body), hash, observedAt, e.effectiveAt ?? null, scope.userId); // sealed at rest when AR_PHI_KEY is set (ADR 0070); hash is over the plaintext
   const obs = extractObservations(e.kind, e.content);
   for (const o of obs) {
     run(db, 'INSERT INTO observations VALUES (?,?,?,?,?,?,?,?,?,?,?)', scope.tenantId, scope.clientId, e.accountId, newId('ob'),
@@ -137,7 +142,7 @@ export function addEvidence(db: Db, scope: Scope, e: AddEvidenceInput): { eviden
 export function listEvidence(db: Db, scope: Scope, accountId: string) {
   return all<EvidenceRow>(db, 'SELECT * FROM evidence WHERE tenant_id=? AND client_id=? AND account_id=? ORDER BY observed_at, rowid',
     scope.tenantId, scope.clientId, accountId).map((r) => ({
-    evidenceId: r.evidence_id, kind: r.kind, title: r.title, source: r.source, content: JSON.parse(r.content),
+    evidenceId: r.evidence_id, kind: r.kind, title: r.title, source: r.source, content: readSealedJson(r.content),
     sha256: r.sha256, observedAt: r.observed_at, effectiveAt: r.effective_at, createdBy: r.created_by,
   }));
 }

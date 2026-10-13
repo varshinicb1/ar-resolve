@@ -9,6 +9,7 @@
 import { type Db, all, one, run } from '../db/db.ts';
 import { newId, nowIso, sha256 } from '../util.ts';
 import { ConnectorTimeout, PreflightFailed, type Connector, type SubmitResult } from './executors.ts';
+import { openPayload } from '../services/sealed-store.ts';
 
 export const PM_FIELDS = { account_notes: 'Account notes (append-only collection notes)' } as const;
 export type PmFault = 'pm_readback_lag' | 'pm_alters_note' | 'pm_timeout_before_write';
@@ -59,7 +60,7 @@ interface WritebackPayload {
 
 function approvedPayload(db: Db, key: string): WritebackPayload | null {
   const r = one<{ payload: string }>(db, `SELECT p.payload FROM action_outbox o JOIN proposed_actions p USING (tenant_id, client_id, action_id) WHERE o.idempotency_key=?`, key);
-  return r ? JSON.parse(r.payload) as WritebackPayload : null;
+  return r ? openPayload(r.payload) as WritebackPayload : null;
 }
 
 // Read-back: fetch the note the target holds for this key and compare it with the approved payload.
