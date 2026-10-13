@@ -9,6 +9,7 @@ import { hashJson, nowIso } from '../util.ts';
 import { audit } from './audit.ts';
 import { approverStillAuthorized, requirePerm, type Scope } from './auth.ts';
 import { activePause, type PauseDims } from './controls.ts';
+import { openPayload } from './sealed-store.ts';
 
 interface Row { tenant_id: string; client_id: string; action_id: string; connector: string; state: string; held_at?: string | null; hold_scope_key?: string | null }
 
@@ -62,7 +63,7 @@ export function releaseProblems(db: Db, o: Row): string[] {
   if (a.state !== 'approved') problems.push(`action state is ${a.state}`);
   if (!d) problems.push('no approval decision on record');
   if (d && d.payload_sha256 !== a.payload_sha256) problems.push('approval hash does not match payload');
-  if (hashJson(JSON.parse(a.payload)) !== a.payload_sha256) problems.push('payload integrity check failed');
+  if (hashJson(openPayload(a.payload)) !== a.payload_sha256) problems.push('payload integrity check failed');
   if (acct.revision !== a.expected_revision || (d && d.account_revision !== acct.revision)) problems.push(`account revision changed (${a.expected_revision} -> ${acct.revision})`);
   if (d && !approverStillAuthorized(db, d.actor_id, o.tenant_id, o.client_id, a.kind)) problems.push('approver no longer holds an approving role');
   if (a.expires_at <= nowIso()) problems.push('proposal expired while held');

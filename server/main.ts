@@ -7,6 +7,7 @@ import { startWorker } from './services/outbox.ts';
 import { startVoiceWorker } from './services/voice/engine.ts';
 import { startupProblems } from './services/governance.ts';
 import { startNotificationWorker } from './services/notifications.ts';
+import { startGovernanceWorker } from './services/governance-worker.ts';
 
 // PHI gate (ADR 0070): AR_PHI_MODE=on refuses to start unless the deployment-level safeguards exist.
 const phiProblems = startupProblems();
@@ -30,3 +31,4 @@ server.listen(port, () => {
 if (embeddedWorker) startWorker(db, Number(process.env.AR_WORKER_INTERVAL_MS ?? 1500));
 if (embeddedWorker) startVoiceWorker(db);
 if (embeddedWorker) startNotificationWorker(db, Number(process.env.AR_NOTIFY_INTERVAL_MS ?? 5000));
+if (embeddedWorker) startGovernanceWorker(db, Number(process.env.AR_GOVERNANCE_INTERVAL_MS ?? 5000)); // ADR 0080

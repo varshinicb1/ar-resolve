@@ -87,6 +87,7 @@ export function Insights({ roles }: { roles: string[] }) {
           {canImport && <RemittancePanel onDone={load} />}
         </div>
         <div>
+          <ValueCard />
           <EconomicsPanel />
           {k && (
             <Panel title="Analytics events (opaque identifiers only)">
@@ -156,6 +157,36 @@ function EconomicsPanel() {
         </details>
         <p className="small muted">Source: build pack evaluation/economics-assumptions.json and calculate.py (doc 14). Lines = attempts x occupied minutes / (shift minutes x utilization).</p>
       </div>
+    </Panel>
+  );
+}
+
+// ADR 0080: value / operations card. Measured counts and assumption-based estimates, each labelled;
+// the assumptions are shown next to the figures and are placeholders, not benchmarks.
+interface ValueFigure { id: string; label: string; value: number | null; unit: string; kind: 'measured' | 'estimate'; basis: string }
+interface ValueView { days: number; notice: string; assumptionNote: string; assumptions: Record<string, number>; figures: ValueFigure[] }
+
+function ValueCard() {
+  const [v, setV] = useState<ValueView | null>(null);
+  const [err, setErr] = useState('');
+  useEffect(() => { api.get<ValueView>('/api/insights/value').then(setV).catch((e) => setErr(errorText(e))); }, []);
+  if (err) return <Panel title="Value and operations"><div className="callout danger">{err}</div></Panel>;
+  if (!v) return <Panel title="Value and operations"><p className="muted">Loading…</p></Panel>;
+  const show = (f: ValueFigure) => (f.value === null ? '—' : f.unit === 'minutes' ? `${f.value} min` : f.unit === 'hours' ? `${f.value} h` : String(f.value));
+  return (
+    <Panel title={`Value and operations · last ${v.days} days`}>
+      <div className="callout info small" style={{ marginBottom: 12 }}>{v.notice}</div>
+      <table>
+        <thead><tr><th>Figure</th><th className="r">Value</th><th>Kind</th></tr></thead>
+        <tbody>{v.figures.map((f) => (
+          <tr key={f.id}><td className="small">{f.label}<div className="muted">{f.basis}</div></td><td className="r num" style={{ whiteSpace: 'nowrap' }}>{show(f)}</td>
+            <td><span className={`badge ${f.kind === 'measured' ? 'b-verified' : 'b-review'}`}>{f.kind === 'estimate' ? 'estimate' : 'measured'}</span></td></tr>
+        ))}</tbody>
+      </table>
+      <details style={{ marginTop: 8 }}><summary className="small">Assumptions behind the estimates</summary>
+        <ul className="small">{Object.entries(v.assumptions).map(([k, n]) => <li key={k}><span className="mono">{k}</span>: {n} min</li>)}</ul>
+        <p className="small muted">{v.assumptionNote}</p>
+      </details>
     </Panel>
   );
 }

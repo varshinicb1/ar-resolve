@@ -16,6 +16,7 @@ import { loadRule } from '../services/rules.ts';
 import { verifyChain } from '../services/audit.ts';
 import { outcomeLabel } from '../../shared/rules/registry.ts';
 import { MODULES } from './modules.ts';
+import { authenticateKey, keyScope, keyScopes, KEY_PREFIX, recordKeyRequest } from '../services/access.ts';
 
 export const ENVIRONMENT = 'synthetic' as const;
 
@@ -62,8 +63,17 @@ export function createApp(db: Db, opts: { staticDir?: string } = {}): Server {
     routes.push({ method, pattern, keys, handler });
   };
 
-  const ident = (ctx: Ctx) => authenticate(db, (ctx.req.headers.authorization ?? '').replace(/^Bearer /, '') || undefined);
-  const scoped = (ctx: Ctx): Scope => resolveScope(db, ident(ctx), header(ctx, 'x-tenant'), header(ctx, 'x-client'));
+  const ident = (ctx: Ctx) => {
+    const token = (ctx.req.headers.authorization ?? '').replace(/^Bearer /, '') || undefined;
+    return token?.startsWith(KEY_PREFIX) ? authenticateKey(db, token) : authenticate(db, token); // named API keys, ADR 0080
+  };
+  const scoped = (ctx: Ctx): Scope => {
+    const id = ident(ctx);
+    if (!id.apiKey) return resolveScope(db, id, header(ctx, 'x-tenant'), header(ctx, 'x-client'));
+    const s = keyScope(db, id, header(ctx, 'x-tenant') ?? '', header(ctx, 'x-client') ?? '');
+    recordKeyRequest(db, s, ctx.req.method ?? '', new URL(ctx.req.url ?? '/', 'http://localhost').pathname);
+    return s;
+  };
   const header = (ctx: Ctx, k: string) => { const v = ctx.req.headers[k]; return Array.isArray(v) ? v[0] : v; };
 
   // ---- public / development identity
@@ -75,7 +85,7 @@ export function createApp(db: Db, opts: { staticDir?: string } = {}): Server {
   });
   route('GET', '/api/me', (ctx) => {
     const id = ident(ctx);
-    return { ...id, scopes: listScopes(db, id.userId), environment: ENVIRONMENT, liveActions: 'disabled' };
+    return { userId: id.userId, displayName: id.displayName, scopes: id.apiKey ? keyScopes(db, id.userId) : listScopes(db, id.userId), environment: ENVIRONMENT, liveActions: 'disabled' };
   });
 
   // ---- queue and accounts

@@ -17,7 +17,7 @@ import { type Db, all, one, run, tx } from '../db/db.ts';
 import { AppError, canonicalJson, invalid, nowIso, sha256 } from '../util.ts';
 import { audit } from './audit.ts';
 import { requirePerm, type Scope } from './auth.ts';
-import { sealingEnabled, phiKey } from './phi.ts';
+import { sealingEnabled, phiKeyring } from './phi.ts';
 import type { Settings } from '../core/registry.ts';
 import { CALL_ENGINES, enabledEngines } from '../connectors/telephony/engines.ts';
 import { allAdapters, adapterFor, getConfig, ENVIRONMENT_FOR_GATE, type ConnectorDescriptor } from '../connectors/framework.ts';
@@ -167,7 +167,7 @@ export function phiReadiness(db: Db, scope: Scope, settings: Settings = process.
   checks.push({ id: 'environment', label: 'Environment is not synthetic', ok: environment !== 'synthetic', detail: `AR_ENVIRONMENT=${environment}` });
   let keyOk = false;
   let keyDetail = 'AR_PHI_KEY is not set: free text (transcripts, notes, notification payloads) would be stored in plaintext';
-  try { keyOk = phiKey(settings) !== null; if (keyOk) keyDetail = 'AR_PHI_KEY is set (AES-256-GCM sealing on)'; } catch (e) { keyDetail = (e as Error).message; }
+  try { const ring = phiKeyring(settings); keyOk = ring.activeId !== null; if (keyOk) keyDetail = `PHI keyring set (AES-256-GCM sealing on; active key ${ring.activeId}, ${ring.keys.size} key(s); ADR 0080)`; } catch (e) { keyDetail = (e as Error).message; }
   checks.push({ id: 'encryption_key', label: 'Encryption key for free text at rest', ok: keyOk, detail: keyDetail });
   const hosting = hostingVendors(settings);
   checks.push({ id: 'hosting_declared', label: 'Hosting vendor declared', ok: hosting.length > 0, detail: hosting.length ? hosting.join(', ') : 'AR_HOSTING_VENDORS is not set; no hosting provider is selected' });
@@ -200,7 +200,7 @@ export function startupProblems(settings: Settings = process.env, environment: s
   if (!phiModeOn(settings)) return [];
   const problems: string[] = [];
   if (environment === 'synthetic') problems.push('AR_PHI_MODE=on but AR_ENVIRONMENT is synthetic');
-  if (!sealingEnabled(settings)) problems.push('AR_PHI_MODE=on but AR_PHI_KEY is missing or invalid');
+  if (!sealingEnabled(settings)) problems.push('AR_PHI_MODE=on but AR_PHI_KEY / AR_PHI_KEYS is missing or invalid');
   if (!hostingVendors(settings).length) problems.push('AR_PHI_MODE=on but AR_HOSTING_VENDORS is not declared');
   for (const e of enabledEngines(settings)) if (!e.guarded) problems.push(`AR_PHI_MODE=on but call engine ${e.id} is enabled and unguarded`);
   return problems;

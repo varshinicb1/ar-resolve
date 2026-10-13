@@ -10,6 +10,8 @@ import { approvalChecks, type ActionRow } from './review.ts';
 import { activePause } from './controls.ts';
 import { getAccountRow, priorityOf } from './workflow.ts';
 import { accountOperationsExport } from './writeback.ts';
+import { openPayload } from './sealed-store.ts';
+import { open as openSealed } from './phi.ts';
 
 function actions(db: Db, scope: Scope, accountId: string) {
   return all<ActionRow>(db, "SELECT * FROM proposed_actions WHERE tenant_id=? AND client_id=? AND account_id=? AND kind <> 'note_writeback' ORDER BY created_at DESC, rowid DESC", scope.tenantId, scope.clientId, accountId);
@@ -35,8 +37,8 @@ export function accountView(db: Db, scope: Scope, accountId: string) {
     const decisions = all<{ decision_id: string; decision: string; actor_id: string; rationale: string; payload_sha256: string; account_revision: number; created_at: string }>(db,
       'SELECT decision_id, decision, actor_id, rationale, payload_sha256, account_revision, created_at FROM review_decisions WHERE tenant_id=? AND client_id=? AND action_id=? ORDER BY created_at', scope.tenantId, scope.clientId, r.action_id);
     return {
-      actionId: r.action_id, runId: r.run_id, kind: r.kind, riskClass: r.risk_class, connector: r.connector, payload: JSON.parse(r.payload),
-      payloadSha256: r.payload_sha256, expectedRevision: r.expected_revision, state: r.state, expiresAt: r.expires_at, noteDraft: r.note_draft,
+      actionId: r.action_id, runId: r.run_id, kind: r.kind, riskClass: r.risk_class, connector: r.connector, payload: openPayload(r.payload),
+      payloadSha256: r.payload_sha256, expectedRevision: r.expected_revision, state: r.state, expiresAt: r.expires_at, noteDraft: openSealed(r.note_draft),
       createdBy: r.created_by, createdAt: r.created_at, outbox: outbox ?? null, decisions,
       checks: r.state === 'awaiting_review' ? approvalChecks(db, scope, r) : null,
     };

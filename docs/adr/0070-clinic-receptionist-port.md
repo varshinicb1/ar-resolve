@@ -138,6 +138,8 @@ Each ported file names its origin in a header comment. The origin repository was
 
 ## Left open
 
+ADR 0080 closes the payload sealing, key rotation and English-only items below, and ports `value.ts`, `access.ts`, `recording.ts` (simulated) and `purgeExpired`.
+
 - **`proposed_actions` payload.** The note text inside this payload is not sealed, because the approved hash covers it. Sealing it needs a hash-over-plaintext change in review and execution.
 - **`AR_PHI_KEY` rotation.** No rotation or re-encryption job exists.
 - **Guard rules** are English-only regular expressions.

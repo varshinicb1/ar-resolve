@@ -27,6 +27,8 @@ import { nextQuestion, promptFor, TERMINAL_QUESTION, type PlannedQuestion, type 
 import { ACTIVE_CALL_STATES, currentPolicy, evaluateGate, policyVersion } from './policy.ts';
 import { guardInbound, guardOutbound, type GuardVerdict } from '../guard.ts';
 import { open as openText, seal } from '../phi.ts';
+import { speakDollars, speakIsoDate, speakReference } from './spoken.ts';
+import { finishSimulatedRecording, recordingGate, startSimulatedRecording } from '../recording.ts';
 
 export const TERMINAL_STATES = ['completed', 'dropped', 'cancelled', 'failed'];
 const AUTOMATED_STATES = ACTIVE_CALL_STATES.filter((s) => s !== 'handoff_to_human');
@@ -335,9 +337,13 @@ function applyAnswer(db: Db, w: Work, qn: PlannedQuestion, turns: { seq: number;
   w.row.pending_read_back = qn.id;
 }
 
+// Read-back in words (ADR 0080, ported from clinic-receptionist src/spoken.ts): text-to-speech cannot
+// misread "$425.00" or merge the characters of a reference. The Guard turns the words back into
+// digits before its identifier and sourced-figure checks (guard.ts).
 function formatForReadBack(qn: PlannedQuestion, value: unknown): string {
-  if (qn.expects === 'money') return speakMoney(value as number);
-  return spellReference(String(value));
+  if (qn.expects === 'money') return speakDollars(value as number);
+  if (qn.expects === 'date' && typeof value === 'string') return speakIsoDate(value);
+  return speakReference(String(value));
 }
 
 // ---------------------------------------------------------------- steps
@@ -427,8 +433,14 @@ function stepCallInner(db: Db, w: Work): void {
     case 'rep_connected': {
       if (r.cancel_requested) { transition(db, w, 'wrap_up'); return; }
       const pol = policyVersion(db, r.tenant_id, r.client_id, r.policy_version).definition;
-      const text = pol.disclosure.automationDisclosure + (pol.recording.enabled && pol.disclosure.announceRecording ? ' This call may be recorded.' : '');
+      // A recorded call (ADR 0080) speaks the client's recording disclosure line in the opening; recording starts only after it was spoken.
+      const rec = w.plan.recording;
+      const text = pol.disclosure.automationDisclosure + (rec ? ` ${rec.disclosureLine}` : pol.recording.enabled && pol.disclosure.announceRecording ? ' This call may be recorded.' : '');
       exchange(db, w, { type: 'say', intent: 'disclose', text }, text);
+      if (rec) {
+        const seq = one<{ s: number }>(db, "SELECT MAX(seq) s FROM voice_call_events WHERE tenant_id=? AND client_id=? AND call_id=? AND speaker='agent'", r.tenant_id, r.client_id, r.call_id)!.s;
+        startSimulatedRecording(db, { tenantId: r.tenant_id, clientId: r.client_id, callId: r.call_id, accountId: r.account_id, policyVersion: rec.policyVersion, policySha256: rec.policySha256, consentMode: rec.consentMode, disclosureSeq: seq });
+      }
       if (w.line.phase === 'ended') return onLineEnded(db, w);
       transition(db, w, 'authenticating');
       return;
@@ -517,6 +529,7 @@ function finish(db: Db, w: Work, state: string, reasonCode: string | null, outco
   for (const qn of w.plan.questions) if (!TERMINAL_QUESTION.includes(qn.status)) { qn.status = qn.status === 'asked' || qn.status === 'awaiting_read_back' ? 'unconfirmed' : 'skipped'; qn.note = qn.note ?? `Call ended (${state})`; }
   r.pending_read_back = null;
   transition(db, w, state, { reasonCode, outcome });
+  finishSimulatedRecording(db, { tenantId: r.tenant_id, clientId: r.client_id, callId: r.call_id, durationMs: r.sim_elapsed_ms }); // no-op unless recorded (ADR 0080)
   r.reason_code = reasonCode;
   r.outcome = outcome;
   r.ended_at = nowIso();
@@ -647,6 +660,7 @@ export function startCall(db: Db, scope: Scope, accountId: string, body: { idemp
   if (simScript && (!SYNTHETIC_ENVIRONMENT || !SIM_SCRIPTS[simScript])) throw invalid('Unknown simulator script');
   const out = tx(db, () => {
     const a = getAccountRow(db, scope, accountId);
+    if (one<{ deleted_at: string | null }>(db, 'SELECT deleted_at FROM accounts WHERE tenant_id=? AND client_id=? AND account_id=?', scope.tenantId, scope.clientId, accountId)?.deleted_at) throw conflict('account_deleted', 'This account was deleted at the owner\'s request (ADR 0080)');
     if (key) {
       const existing = one<CallRow>(db, 'SELECT * FROM voice_calls WHERE tenant_id=? AND client_id=? AND idempotency_key=?', scope.tenantId, scope.clientId, key);
       if (existing) {
@@ -663,6 +677,8 @@ export function startCall(db: Db, scope: Scope, accountId: string, body: { idemp
     }
     const callId = newId('vc');
     const idem = key ?? newId('idem');
+    const recGate = recordingGate(db, scope, 'sim_voice'); // ADR 0080: off by default; every gate must hold
+    if (recGate.allowed) gate.plan!.recording = { required: true, disclosureLine: recGate.disclosureLine, policyVersion: recGate.policy.version, policySha256: recGate.policy.sha256, consentMode: recGate.consentMode };
     const adapter = adapterFor(db, 'sim_voice');
     const pol = currentPolicy(db, scope.tenantId, scope.clientId);
     const started = adapter.startCall({ requestId: callId, tenantId: scope.tenantId, clientId: scope.clientId, accountRevision: a.revision, idempotencyKey: idem,
@@ -678,7 +694,7 @@ export function startCall(db: Db, scope: Scope, accountId: string, body: { idemp
     event(db, w, { kind: 'state', text: '→ queued', data: { from: null, to: 'queued', gate: gate.checks.map((c) => c.id), policyVersion: gate.policy.version } });
     audit(db, { tenantId: scope.tenantId, clientId: scope.clientId, actorId: scope.userId, objectType: 'voice_call', objectId: callId, accountId,
       eventType: 'voice_call_started', details: { destination: gate.line!.destination, policyVersion: gate.policy.version, plan: `${gate.plan!.planId}@${gate.plan!.version}`,
-        questions: gate.plan!.questions.map((q) => q.id), simulated: true, simScript } });
+        questions: gate.plan!.questions.map((q) => q.id), simulated: true, simScript, recording: recGate.allowed } });
     return { callId, state: 'queued', duplicate: false };
   });
   if ('refused' in out && out.refused) {

@@ -2,6 +2,8 @@
 // rule evaluation that produces an immutable proposed action or an abstention.
 import { type Db, all, one, run, tx } from '../db/db.ts';
 import { AppError, canonicalJson, conflict, hashJson, invalid, newId, notFound, now, nowIso, sha256 } from '../util.ts';
+import { sealPayload } from './sealed-store.ts'; // ADR 0080: free text sealed at rest, hash over plaintext
+import { seal } from './phi.ts';
 import { assertMayIngest, isSyntheticInventoryRow } from './governance.ts';
 import { actionSpec, type RuleDefinition } from '../../shared/rules/catalog.ts';
 import { moduleFor, outcomeLabel } from '../../shared/rules/registry.ts';
@@ -359,7 +361,7 @@ export function evaluateAndPropose(db: Db, scope: Scope, accountId: string, cont
     actionId = newId('act');
     const expires = new Date(now().getTime() + PROPOSAL_TTL_HOURS * 3600_000).toISOString();
     run(db, `INSERT INTO proposed_actions VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, scope.tenantId, scope.clientId, actionId, accountId, runId, a.revision,
-      outcome, spec.risk, spec.connector!, canonicalJson(payload), hashJson(payload), draftNote(a, facts, ev, titles, def), 'awaiting_review', expires, scope.userId, nowIso(), nowIso());
+      outcome, spec.risk, spec.connector!, sealPayload(payload), hashJson(payload), seal(draftNote(a, facts, ev, titles, def)), 'awaiting_review', expires, scope.userId, nowIso(), nowIso());
     audit(db, { tenantId: scope.tenantId, clientId: scope.clientId, actorId: scope.userId, objectType: 'action', objectId: actionId, accountId,
       eventType: 'action_proposed', details: { kind: outcome, payloadSha256: hashJson(payload), expectedRevision: a.revision, expiresAt: expires } });
   }

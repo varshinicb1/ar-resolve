@@ -151,7 +151,7 @@ Status values: **Implemented** (works and tested on synthetic data), **Mocked** 
 | PHI02 | Vendor/BAA register: append-only, versioned, audited, `integration_admin`, scoped; backs the ADR 0030 live gate | Implemented (attestation recorded by a person; contracts not verifiable by code) | tests/maya-port.test.ts; tests/integrations.test.ts "live adapters refuse…" |
 | PHI03 | Ingest gate: non-synthetic inventory rows and ISA15=P interchanges refused (409, audited); startup refuses unsafe `AR_PHI_MODE=on` | Implemented | tests/maya-port.test.ts "PHI gate: non-synthetic inventory…" |
 | PHI04 | AES-256-GCM sealing of call text, hand-off packets, evidence content, write-back texts, notification payloads and settings | Implemented | tests/maya-port.test.ts "sealing…" |
-| PHI05 | Sealing of note text inside the hash-bound proposed-action payload; key rotation | Not started | ADR 0070 "Left open" |
+| PHI05 | Sealing of note text inside the hash-bound proposed-action payload; key rotation | Implemented (ADR 0080, see PHI07/PHI08) | tests/maya-followups.test.ts |
 | PHI06 | Real BAAs, hosting vendor, PHI mode in production | Blocked | docs/compliance/baa-tracker.md |
 | GRD01 | Guard: inbound injection, agency, memory, identity, credential and payment-redirect flags; outbound identifier, human-claim, promise, disclosure and unsourced-figure checks; clinical rules kept disabled | Implemented | tests/maya-port.test.ts "Guard inbound…", "Guard outbound…" |
 | GRD02 | Guard wired into the voice engine: rep turns become evidence warnings, a blocked agent utterance hands off, actions unchanged; transcript findings endpoint | Implemented | tests/maya-port.test.ts "Guard in the voice engine…" (sim script `guard_probe`) |
@@ -162,3 +162,21 @@ Status values: **Implemented** (works and tested on synthetic data), **Mocked** 
 | NOT02 | Real Slack, Teams, email and SMS sends | Blocked (disabled; payload shapes ported, not re-verified) | ADR 0070 |
 | FHIR01 | SMART discovery, safe base URLs, no redirects, timeouts, RS384 and ES384 with alg/key match | Implemented (against the local mock) | tests/maya-port.test.ts "SMART: discovery…"; tests/integrations.test.ts "FHIR R4 mock…" |
 | DOC01 | Compliance documents (README, BAA tracker, SOC 2 roadmap, eight policies) | Implemented (DRAFT; no attestation) | docs/compliance/ |
+
+## Follow-ups to the port (ADR 0080, migration 080)
+
+| Area | Requirement | Status | Evidence |
+| --- | --- | --- | --- |
+| KEY01 | Named API keys: own principal per client, token shown once and hashed, roles capped by the creator's current roles, human-only permissions never held, revocation final, every use audited; Access page | Implemented | tests/maya-followups.test.ts "API keys…"; web/src/pages/Access.tsx |
+| PHI07 | `request.summary`, `note.text` and `note_draft` sealed inside the hash-bound payload; hash over plaintext; approval still binds; tampering detected | Implemented | tests/maya-followups.test.ts "sealed proposal…" |
+| PHI08 | Keyring (`AR_PHI_KEYS`, key id bound as AAD), resumable audited re-encryption job, retirement refused while any client uses the key | Implemented | tests/maya-followups.test.ts "PHI key rotation…" |
+| RET01 | Versioned retention policy per client with placeholder periods; batched purge to hash-keeping tombstones; worker job; dry run; audited | Implemented (periods are placeholders) | tests/maya-followups.test.ts "retention…" |
+| RET02 | Retention periods from the customer contract and counsel | Blocked | docs/compliance/policies/data-retention.md |
+| DEL01 | Two-person account deletion: request with reason, a different person approves, refused while in flight, tombstones free text, keeps audit/facts/ledger/hashes, approval binding still verifiable | Implemented | tests/maya-followups.test.ts "account deletion…" |
+| DEL02 | Routing deletions to the system of record (PM/EHR) | Blocked | Needs a real PM integration; the simulated PM keeps its copy |
+| GRD03 | Guard es/pt rules (accent-insensitive) for injection, agency, memory, identity, credential and payment redirect; spoken figures checked | Implemented (AR-authored es/pt rules; no native-speaker or counsel review) | tests/maya-followups.test.ts "Guard es/pt…" |
+| REC01 | Call recording policy per client: consent mode configured by a person, counsel-review reference, disclosure line spoken first, deployment flag, PHI gate; simulated metadata with sealed storage reference; retention class; audited access | Mocked (simulated; off by default) | tests/maya-followups.test.ts "call recording…" |
+| REC02 | Real recording (telephony account, storage, BAA, counsel review of consent law) | Blocked | ADR 0080 "Known gaps" |
+| VAL01 | Value / operations card on Insights: measured counts and assumption-based estimates, each labelled, assumptions shown | Implemented (assumptions are placeholders) | tests/maya-followups.test.ts "value card…" |
+| VOI01 | Spoken read-back of dollars, dates and references in words | Implemented | tests/maya-followups.test.ts "spoken read-back…" |
+| UI | Access and Data governance pages, value card: browser check as supervisor, second reviewer and specialist with no console errors | Implemented | ADR 0080 |

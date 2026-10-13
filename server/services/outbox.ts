@@ -9,6 +9,7 @@ import { canonicalJson, hashJson, newId, now, nowIso, sha256 } from '../util.ts'
 import { audit } from './audit.ts';
 import { approverStillAuthorized } from './auth.ts';
 import { activePause } from './controls.ts';
+import { openPayload } from './sealed-store.ts';
 import { afterReceipt, tickFollowups } from './followup.ts';
 import { holdRow, outboxDims } from './holds.ts';
 import { ConnectorTimeout, LiveExecutionDisabled, PreflightFailed, connectorFor, signWebhook, WEBHOOK_SECRET, type SubmitResult } from '../connectors/executors.ts';
@@ -97,7 +98,7 @@ export function tick(db: Db): TickReport {
       if (a.state !== 'approved') problems.push(`action state is ${a.state}`);
       if (!decision) problems.push('no approval decision on record');
       if (decision && decision.payload_sha256 !== a.payload_sha256) problems.push('approval hash does not match payload');
-      if (hashJson(JSON.parse(a.payload)) !== a.payload_sha256) problems.push('payload integrity check failed');
+      if (hashJson(openPayload(a.payload)) !== a.payload_sha256) problems.push('payload integrity check failed');
       if (acct.revision !== a.expected_revision || (decision && decision.account_revision !== acct.revision)) problems.push(`account revision changed (${a.expected_revision} -> ${acct.revision})`);
       if (decision && !approverStillAuthorized(db, decision.actor_id, o.tenant_id, o.client_id, a.kind)) problems.push('approver no longer holds the reviewer role');
       if (openVerbalRequests(db, { tenantId: o.tenant_id, clientId: o.client_id }, a.account_id, a.kind).length) problems.push('the payer accepted the same request verbally on a call and it is not reconciled (ADR 0060)');
@@ -120,7 +121,7 @@ export function tick(db: Db): TickReport {
     // The connector call happens outside any local transaction, like a real network call.
     const connector = connectorFor(o.connector);
     try {
-      const result = connector.submit(db, o.idempotency_key, claimed.payload_sha256, JSON.parse(claimed.payload));
+      const result = connector.submit(db, o.idempotency_key, claimed.payload_sha256, openPayload(claimed.payload));
       tx(db, () => recordReceipt(db, o, claimed, result, 'submit'));
       rep.dispatched++;
     } catch (err) {

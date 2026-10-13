@@ -12,6 +12,8 @@ import { Followups } from './pages/Followups.tsx';
 import { Insights } from './pages/Insights.tsx';
 import { Calls } from './pages/Calls.tsx';
 import { Integrations } from './pages/Integrations.tsx';
+import { Access } from './pages/Access.tsx';
+import { DataGovernance } from './pages/DataGovernance.tsx';
 
 export interface ScopeOption { tenantId: string; tenantName: string; clientId: string; clientName: string; roles: string[] }
 export interface Me { userId: string; displayName: string; scopes: ScopeOption[]; environment: string; liveActions: string }
@@ -92,7 +94,8 @@ export function App() {
     ['insights', 'Insights', null],
     ['operations', 'Operations', counts.receipt_uncertain || null],
     ['knowledge', 'Knowledge', null],
-    ...(roles.includes('supervisor') || roles.includes('admin') ? [['integrations', 'Integrations', null] as [string, string, null]] : []),
+    ['data-governance', 'Data governance', null],
+    ...(roles.includes('supervisor') || roles.includes('admin') ? [['integrations', 'Integrations', null] as [string, string, null], ['access', 'API keys', null] as [string, string, null]] : []),
   ];
 
   return (
@@ -138,6 +141,8 @@ export function App() {
           {path === 'insights' && <Insights roles={roles} />}
           {path === 'calls' && <Calls />}
           {path === 'integrations' && <Integrations roles={roles} />}
+          {path === 'access' && <Access roles={roles} />}
+          {path === 'data-governance' && <DataGovernance roles={roles} userId={me.userId} />}
         </main>
       </div>
       <Toaster />
