@@ -13,7 +13,7 @@ import { listControls, setPause } from '../services/controls.ts';
 import { setFault } from '../connectors/executors.ts';
 import { cohort } from '../connectors/synthetic-source.ts';
 import { loadRule } from '../services/rules.ts';
-import { verifyChain } from '../services/audit.ts';
+import { verifyChainIncremental } from '../services/audit.ts';
 import { outcomeLabel } from '../../shared/rules/registry.ts';
 import { MODULES } from './modules.ts';
 import { authenticateKey, keyScope, keyScopes, KEY_PREFIX, recordKeyRequest } from '../services/access.ts';
@@ -34,19 +34,42 @@ export interface ModuleApi {
 }
 
 const MAX_BODY = 1_000_000;
+// The supervisor operations page lists the most recent outbox rows and work items, not all of them (ADR 0095).
+const OPS_PAGE_ROWS = 500;
+
+// An oversized body is refused with a 413 the client can read (ADR 0095): stop buffering,
+// keep draining what is still in flight (bounded) so the response is not lost to a reset
+// or EPIPE. Destroying the socket at once made every client see ECONNRESET instead of the 413.
+const MAX_DRAIN = 128 * 1024 * 1024;
+function refuseBody(req: IncomingMessage): AppError {
+  let drained = 0;
+  req.removeAllListeners('data');
+  req.on('data', (c: Buffer) => { drained += c.length; if (drained > MAX_DRAIN) req.socket.destroy(); });
+  const timer = setTimeout(() => req.socket.destroy(), 10_000); // a sender that never finishes
+  timer.unref();
+  req.on('end', () => clearTimeout(timer)); // drained: the keep-alive socket stays usable
+  req.resume();
+  return new AppError(413, 'too_large', `Request body too large (limit ${MAX_BODY} bytes); split the upload into smaller parts`);
+}
 
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
+    if (Number(req.headers['content-length'] ?? 0) > MAX_BODY) { reject(refuseBody(req)); return; }
     let size = 0;
     const chunks: Buffer[] = [];
     req.on('data', (c: Buffer) => {
       size += c.length;
-      if (size > MAX_BODY) { reject(new AppError(413, 'too_large', 'Request body too large')); req.destroy(); return; }
+      if (size > MAX_BODY) { chunks.length = 0; reject(refuseBody(req)); return; }
       chunks.push(c);
     });
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     req.on('error', reject);
   });
+}
+
+// Malformed percent-encoding in a path parameter is the client's error, not a 500 (ADR 0095).
+function decodeParam(v: string): string {
+  try { return decodeURIComponent(v); } catch { throw invalid('Malformed URL encoding in the request path'); }
 }
 
 function send(res: ServerResponse, status: number, body: unknown) {
@@ -142,11 +165,12 @@ export function createApp(db: Db, opts: { staticDir?: string } = {}): Server {
     return {
       outbox: all(db, `SELECT o.action_id, o.idempotency_key, o.connector, o.state, o.attempts, o.external_reference, o.last_error, o.updated_at, p.kind, p.account_id, a.external_id
         FROM action_outbox o JOIN proposed_actions p USING (tenant_id, client_id, action_id) JOIN accounts a ON a.tenant_id=p.tenant_id AND a.client_id=p.client_id AND a.account_id=p.account_id
-        WHERE o.tenant_id=? AND o.client_id=? ORDER BY o.updated_at DESC`, s.tenantId, s.clientId),
+        WHERE o.tenant_id=? AND o.client_id=? ORDER BY o.updated_at DESC LIMIT ${OPS_PAGE_ROWS}`, s.tenantId, s.clientId),
       controls: listControls(db, s.tenantId, s.clientId),
-      workItems: all(db, 'SELECT work_item_id, account_id, kind, summary, state, created_at FROM work_items WHERE tenant_id=? AND client_id=? ORDER BY created_at DESC', s.tenantId, s.clientId),
+      workItems: all(db, `SELECT work_item_id, account_id, kind, summary, state, created_at FROM work_items WHERE tenant_id=? AND client_id=? ORDER BY created_at DESC LIMIT ${OPS_PAGE_ROWS}`, s.tenantId, s.clientId),
       faults: all(db, 'SELECT fault, remaining FROM sim_faults'),
-      auditChain: verifyChain(db, s.tenantId),
+      auditChain: verifyChainIncremental(db, s.tenantId), // ADR 0095: full re-walk at most every 10 min
+      limits: { rows: OPS_PAGE_ROWS, note: 'Most recent rows only (ADR 0095)' },
     };
   });
   route('POST', '/api/ops/worker/tick', (ctx) => { requirePerm(scoped(ctx), 'operate'); return tick(db); });
@@ -196,7 +220,7 @@ export function createApp(db: Db, opts: { staticDir?: string } = {}): Server {
       const form = /^application\/x-www-form-urlencoded/i.test(String(req.headers['content-type'] ?? ''));
       if (raw && form) body = Object.fromEntries(new URLSearchParams(raw));
       else if (raw) { try { body = JSON.parse(raw); } catch { throw invalid('Body must be JSON'); } }
-      const params = Object.fromEntries(match.r.keys.map((k, i) => [k, decodeURIComponent(match.m![i + 1])]));
+      const params = Object.fromEntries(match.r.keys.map((k, i) => [k, decodeParam(match.m![i + 1])]));
       const out = await match.r.handler({ req, params, query: url.searchParams, raw, body });
       if (out instanceof RawResponse) { res.writeHead(200, { 'content-type': out.contentType, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' }); res.end(out.text); return; }
       send(res, 200, out ?? { ok: true });

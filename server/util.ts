@@ -23,8 +23,14 @@ export function hashJson(value: unknown): string {
   return sha256(canonicalJson(value));
 }
 
+// Identifiers draw from a pre-filled CSPRNG pool (ADR 0095): one randomBytes() call per id
+// was a fifth of bulk-import CPU. Ids are unique, not secret; newToken() stays unpooled.
+let idPool = Buffer.alloc(0);
+let idOffset = 0;
 export function newId(prefix: string): string {
-  return `${prefix}_${randomBytes(9).toString('base64url')}`;
+  if (idOffset + 9 > idPool.length) { idPool = randomBytes(9 * 1024); idOffset = 0; }
+  idOffset += 9;
+  return `${prefix}_${idPool.toString('base64url', idOffset - 9, idOffset)}`;
 }
 
 export function newToken(): string {

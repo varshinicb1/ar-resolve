@@ -1,0 +1,1203 @@
+{
+  "mode": "quick",
+  "command": "npm run stress:quick",
+  "startedAt": "2026-10-14T11:07:52.750Z",
+  "machine": {
+    "nproc": 4,
+    "cpuModel": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+    "totalMemoryMb": 16093,
+    "node": "v22.22.0",
+    "kernel": "6.18.44-fc-v114",
+    "platform": "linux"
+  },
+  "results": [
+    {
+      "name": "hostile",
+      "title": "Large, malformed and fuzzed inputs",
+      "durationMs": 3798,
+      "metrics": {
+        "oversized.declared.1.4MB": {
+          "status": 413,
+          "error": null,
+          "ms": 2
+        },
+        "oversized.declared.9.5MB": {
+          "status": 413,
+          "error": null,
+          "ms": 3
+        },
+        "oversized.declared.95.4MB": {
+          "status": 413,
+          "error": null,
+          "ms": 15
+        },
+        "oversized.chunked.4.8MB": {
+          "status": 413,
+          "error": null,
+          "ms": 12
+        },
+        "oversized.chunked.47.7MB": {
+          "status": 413,
+          "error": null,
+          "ms": 15
+        },
+        "nestedJson": {
+          "requests": 72,
+          "statuses": {
+            "200": 13,
+            "400": 48,
+            "409": 6,
+            "422": 5
+          },
+          "slowestMs": 150
+        },
+        "malformed": {
+          "requests": 40,
+          "statuses": {
+            "200": 11,
+            "400": 26,
+            "404": 2,
+            "431": 1
+          }
+        },
+        "csvShape.one 890 KB line": {
+          "bytes": 888110,
+          "status": 409,
+          "ms": 18
+        },
+        "csvShape.200k blank lines": {
+          "bytes": 200109,
+          "status": 200,
+          "ms": 5
+        },
+        "csvShape.50k columns": {
+          "bytes": 200110,
+          "status": 409,
+          "ms": 13
+        },
+        "csvShape.quoted commas": {
+          "bytes": 187,
+          "status": 409,
+          "ms": 6
+        },
+        "csvShape.80k tiny rows": {
+          "bytes": 160109,
+          "status": 409,
+          "ms": 58
+        },
+        "csvFuzz": {
+          "requests": 155,
+          "statuses": {
+            "200": 124,
+            "409": 31
+          },
+          "latencyMs": {
+            "n": 150,
+            "p50": 5.4,
+            "p95": 12.4,
+            "p99": 22.7,
+            "max": 28.7,
+            "mean": 6.5
+          }
+        },
+        "x12Fuzz": {
+          "previews": 320,
+          "validAfterMutation": 27,
+          "ingests": 27,
+          "statuses": {
+            "200": 347
+          },
+          "latencyMs": {
+            "n": 320,
+            "p50": 5.7,
+            "p95": 23,
+            "p99": 29.3,
+            "max": 35.6,
+            "mean": 8.1
+          }
+        },
+        "totals": {
+          "requests": 619,
+          "statuses": {
+            "200": 495,
+            "400": 74,
+            "404": 2,
+            "409": 37,
+            "413": 5,
+            "422": 5,
+            "431": 1
+          },
+          "slowest": {
+            "label": "nested array 400000 -> rule draft",
+            "ms": 150
+          },
+          "serverStackTraces": 0,
+          "server": {
+            "samples": 3,
+            "rssStartMb": 177.2,
+            "rssEndMb": 271,
+            "rssPeakMb": 271,
+            "heapEndMb": 73.7,
+            "eventLoopP99MaxMs": 152.2,
+            "eventLoopMaxMs": 152.2
+          }
+        }
+      },
+      "checks": [
+        {
+          "name": "oversized bodies get a clean 413 (no reset)",
+          "pass": true,
+          "detail": "oversized declared 1.4 MB: 413; oversized declared 9.5 MB: 413; oversized declared 95.4 MB: 413; oversized chunked 4.8 MB: 413; oversized chunked 47.7 MB: 413"
+        },
+        {
+          "name": "deeply nested JSON never causes a 5xx",
+          "pass": true,
+          "detail": ""
+        },
+        {
+          "name": "negative pageSize is clamped (no unbounded page)",
+          "pass": true,
+          "detail": "pageSize 25"
+        },
+        {
+          "name": "malformed bodies, queries and paths never cause a 5xx",
+          "pass": true,
+          "detail": ""
+        },
+        {
+          "name": "fuzzed and pathological CSV never causes a 5xx",
+          "pass": true,
+          "detail": ""
+        },
+        {
+          "name": "fuzzed X12 never causes a 5xx",
+          "pass": true,
+          "detail": ""
+        },
+        {
+          "name": "server alive and answering health in < 1 s after the barrage",
+          "pass": true,
+          "detail": "1 ms"
+        },
+        {
+          "name": "no unhandled server errors logged",
+          "pass": true,
+          "detail": ""
+        }
+      ],
+      "notes": [],
+      "error": null
+    },
+    {
+      "name": "investigations",
+      "title": "Concurrent investigations (many accounts, and one account)",
+      "durationMs": 1753,
+      "metrics": {
+        "manyAccounts": {
+          "accounts": 300,
+          "concurrency": 16,
+          "statuses": {
+            "200": 300
+          },
+          "latencyMs": {
+            "n": 300,
+            "p50": 28.8,
+            "p95": 69.9,
+            "p99": 213.5,
+            "max": 300.6,
+            "mean": 36.6
+          }
+        },
+        "sameAccountInvestigate": {
+          "requests": 40,
+          "statuses": {
+            "200": 40
+          },
+          "latencyMs": {
+            "n": 40,
+            "p50": 64.7,
+            "p95": 130.6,
+            "p99": 135.9,
+            "max": 135.9,
+            "mean": 66.6
+          }
+        },
+        "sameRevisionCorrections": {
+          "requests": 30,
+          "statuses": {
+            "200": 1,
+            "409": 29
+          }
+        },
+        "interleaved": {
+          "requests": 60,
+          "statuses": {
+            "200": 43,
+            "409": 17
+          }
+        },
+        "invariants": {
+          "accounts": 310,
+          "proposals": 8,
+          "decisions": 0,
+          "outbox": 0,
+          "connectorReceived": 0,
+          "auditEvents": 1050
+        }
+      },
+      "checks": [
+        {
+          "name": "every concurrent investigation succeeds",
+          "pass": true,
+          "detail": "{\"200\":300}"
+        },
+        {
+          "name": "same-account investigations never fail with 5xx",
+          "pass": true,
+          "detail": null
+        },
+        {
+          "name": "at most one open proposal per account revision",
+          "pass": true,
+          "detail": "[{\"expected_revision\":2,\"n\":1}]"
+        },
+        {
+          "name": "exactly one correction wins a same-revision race",
+          "pass": true,
+          "detail": "{\"200\":1,\"409\":29}"
+        },
+        {
+          "name": "account revision advanced exactly once",
+          "pass": true,
+          "detail": "2 -> 3"
+        },
+        {
+          "name": "interleaved investigate/correct never 5xx",
+          "pass": true,
+          "detail": null
+        },
+        {
+          "name": "safety invariants hold",
+          "pass": true,
+          "detail": ""
+        },
+        {
+          "name": "server healthy",
+          "pass": true,
+          "detail": null
+        }
+      ],
+      "notes": [],
+      "error": null
+    },
+    {
+      "name": "approvals",
+      "title": "Approval races and multi-process outbox dispatch",
+      "durationMs": 6378,
+      "metrics": {
+        "approvalStorm": {
+          "actions": 20,
+          "requestsPerAction": 17,
+          "statuses": {
+            "200": 20,
+            "403": 20,
+            "409": 300
+          },
+          "latencyMs": {
+            "n": 340,
+            "p50": 252.2,
+            "p95": 445,
+            "p99": 459.1,
+            "max": 462.7,
+            "mean": 255.6
+          }
+        },
+        "apiTicksDuringWorkerStorm": {
+          "statuses": {
+            "200": 40
+          },
+          "latencyMs": {
+            "n": 40,
+            "p50": 1.8,
+            "p95": 380.6,
+            "p99": 381.8,
+            "max": 381.8,
+            "mean": 45.2
+          }
+        },
+        "webhookReplays": {
+          "actions": 2,
+          "perAction": 6,
+          "exactlyOneApplied": 2
+        },
+        "approveWhileChanging": {
+          "rounds": 8,
+          "outcomes": {
+            "approve:200 correct:200": 8
+          },
+          "statuses": {
+            "200": 24
+          }
+        },
+        "workerProcessErrors": {
+          "lines": 0,
+          "sample": []
+        },
+        "invariants": {
+          "accounts": 35,
+          "proposals": 29,
+          "decisions": 28,
+          "outbox": 27,
+          "connectorReceived": 19,
+          "auditEvents": 357
+        }
+      },
+      "checks": [
+        {
+          "name": "cohort produced proposals to race on",
+          "pass": true,
+          "detail": "20 proposals"
+        },
+        {
+          "name": "exactly one decision wins per action",
+          "pass": true,
+          "detail": "20/20"
+        },
+        {
+          "name": "losing decisions get 4xx, never 5xx",
+          "pass": true,
+          "detail": null
+        },
+        {
+          "name": "API ticks overlapping worker processes never 5xx",
+          "pass": true,
+          "detail": "{\"200\":40}"
+        },
+        {
+          "name": "one decision row per action in the database",
+          "pass": true,
+          "detail": null
+        },
+        {
+          "name": "replayed payer confirmations apply exactly once",
+          "pass": true,
+          "detail": "2/2"
+        },
+        {
+          "name": "approve-while-changing never 5xx",
+          "pass": true,
+          "detail": "{\"200\":24}"
+        },
+        {
+          "name": "worker processes logged no errors (no SQLITE_BUSY)",
+          "pass": true,
+          "detail": ""
+        },
+        {
+          "name": "safety invariants hold (one decision, no blind resend, bound sends, states agree, audit chain)",
+          "pass": true,
+          "detail": ""
+        },
+        {
+          "name": "server healthy",
+          "pass": true,
+          "detail": null
+        },
+        {
+          "name": "no unhandled server errors logged",
+          "pass": true,
+          "detail": ""
+        }
+      ],
+      "notes": [],
+      "error": null
+    },
+    {
+      "name": "crash",
+      "title": "Crash mid-dispatch and restart",
+      "durationMs": 4260,
+      "metrics": {
+        "workerKillTimings": [
+          {
+            "worker": "crashworker0",
+            "msToSeeClaim": 285,
+            "claimAgeWhenSeenMs": 6,
+            "outboxAfterKill": {
+              "dispatching": 1,
+              "pending": 16
+            }
+          },
+          {
+            "worker": "crashworker1",
+            "msToSeeClaim": 278,
+            "claimAgeWhenSeenMs": 9,
+            "outboxAfterKill": {
+              "dispatching": 2,
+              "pending": 15
+            }
+          },
+          {
+            "worker": "crashworker2",
+            "msToSeeClaim": 273,
+            "claimAgeWhenSeenMs": 5,
+            "outboxAfterKill": {
+              "dispatching": 3,
+              "pending": 14
+            }
+          },
+          {
+            "worker": "crashworker3",
+            "msToSeeClaim": 332,
+            "claimAgeWhenSeenMs": 11,
+            "outboxAfterKill": {
+              "dispatching": 4,
+              "pending": 13
+            }
+          }
+        ],
+        "approvedPending": 20,
+        "kills": {
+          "count": 5,
+          "sentBeforeKill": 1,
+          "notYetSent": 4,
+          "stateAfterKills": {
+            "dispatching": 5,
+            "pending": 15
+          }
+        },
+        "stateAfterRecovery": {
+          "accepted": 11,
+          "confirmed": 9
+        },
+        "perKill": [
+          {
+            "killed": "crashworker0",
+            "sentAtKill": false,
+            "finalState": "accepted",
+            "dispatches": 2,
+            "reconcile": [
+              "absent_at_connector"
+            ]
+          },
+          {
+            "killed": "crashworker1",
+            "sentAtKill": true,
+            "finalState": "confirmed",
+            "dispatches": 1,
+            "reconcile": [
+              "found_at_connector"
+            ]
+          },
+          {
+            "killed": "crashworker2",
+            "sentAtKill": false,
+            "finalState": "confirmed",
+            "dispatches": 2,
+            "reconcile": [
+              "absent_at_connector"
+            ]
+          },
+          {
+            "killed": "crashworker3",
+            "sentAtKill": false,
+            "finalState": "confirmed",
+            "dispatches": 2,
+            "reconcile": [
+              "absent_at_connector"
+            ]
+          },
+          {
+            "killed": "api-server",
+            "sentAtKill": false,
+            "finalState": "accepted",
+            "dispatches": 2,
+            "reconcile": [
+              "absent_at_connector"
+            ]
+          }
+        ],
+        "invariants": {
+          "accounts": 35,
+          "proposals": 20,
+          "decisions": 20,
+          "outbox": 20,
+          "connectorReceived": 20,
+          "auditEvents": 323
+        }
+      },
+      "checks": [
+        {
+          "name": "every kill landed while a dispatch was in flight",
+          "pass": true,
+          "detail": "5 of 5"
+        },
+        {
+          "name": "all rows settle after restart (no pending, dispatching or uncertain)",
+          "pass": true,
+          "detail": "{\"accepted\":11,\"confirmed\":9}"
+        },
+        {
+          "name": "sent-before-crash requests are found by read-back, never resubmitted",
+          "pass": true,
+          "detail": null
+        },
+        {
+          "name": "unsent requests are proven absent and sent exactly once more",
+          "pass": true,
+          "detail": null
+        },
+        {
+          "name": "every crashed dispatch ends accepted or confirmed",
+          "pass": true,
+          "detail": "accepted,confirmed,confirmed,confirmed,accepted"
+        },
+        {
+          "name": "safety invariants hold after crashes",
+          "pass": true,
+          "detail": ""
+        },
+        {
+          "name": "restarted server healthy",
+          "pass": true,
+          "detail": null
+        }
+      ],
+      "notes": [
+        "Quick mode: dispatch leases were expired by a direct database update instead of waiting 30 s."
+      ],
+      "error": null
+    },
+    {
+      "name": "voice",
+      "title": "Concurrent simulated calls and call advancement",
+      "durationMs": 1178,
+      "metrics": {
+        "startStorm": {
+          "requests": 105,
+          "statuses": {
+            "200": 4,
+            "422": 101
+          },
+          "distinctCallsCreated": 2,
+          "refusalReasons": {
+            "NO_CALL_NEEDED": 18,
+            "CALL_ALREADY_ACTIVE": 2,
+            "CONCURRENCY_LIMIT": 91,
+            "IDENTITY_CONFLICT": 6,
+            "IDENTITY_UNVERIFIED": 6,
+            "NO_PLAYBOOK": 69
+          },
+          "latencyMs": {
+            "n": 105,
+            "p50": 119.6,
+            "p95": 178.5,
+            "p99": 189.6,
+            "max": 190.7,
+            "mean": 112.4
+          }
+        },
+        "advance": {
+          "requests": 103,
+          "statuses": {
+            "200": 101,
+            "409": 2
+          },
+          "latencyMs": {
+            "n": 103,
+            "p50": 4,
+            "p95": 44.6,
+            "p99": 57.5,
+            "max": 61.4,
+            "mean": 8.4
+          }
+        },
+        "limits": {
+          "maxConcurrentObserved": 2,
+          "maxConcurrentAllowed": 2,
+          "callsPerTenantThisHour": [
+            {
+              "tenant_id": "tn_demo",
+              "n": 4
+            }
+          ],
+          "maxCallsPerHourAllowed": 6,
+          "wave2": {
+            "200": 2,
+            "422": 33
+          },
+          "callStates": [
+            {
+              "state": "completed",
+              "n": 2
+            },
+            {
+              "state": "queued",
+              "n": 2
+            }
+          ]
+        }
+      },
+      "checks": [
+        {
+          "name": "start-call storm never 5xx",
+          "pass": true,
+          "detail": "{\"200\":4,\"422\":101}"
+        },
+        {
+          "name": "same idempotency key never creates two calls",
+          "pass": true,
+          "detail": "2 keyed pairs both accepted"
+        },
+        {
+          "name": "concurrent advance/cancel/takeover never 5xx",
+          "pass": true,
+          "detail": "{\"200\":101,\"409\":2}"
+        },
+        {
+          "name": "never more than 2 concurrent calls on the payer line",
+          "pass": true,
+          "detail": "max observed 2"
+        },
+        {
+          "name": "never more than 6 calls per hour per tenant on the payer line",
+          "pass": true,
+          "detail": "[{\"tenant_id\":\"tn_demo\",\"n\":4}]"
+        },
+        {
+          "name": "second wave never 5xx",
+          "pass": true,
+          "detail": null
+        },
+        {
+          "name": "safety invariants hold",
+          "pass": true,
+          "detail": ""
+        },
+        {
+          "name": "server healthy and no unhandled errors",
+          "pass": true,
+          "detail": ""
+        }
+      ],
+      "notes": [],
+      "error": null
+    },
+    {
+      "name": "isolation",
+      "title": "Scope isolation under concurrent load",
+      "durationMs": 2296,
+      "metrics": {
+        "requests": {
+          "total": 3000,
+          "concurrency": 32,
+          "byKind": {
+            "legit list": {
+              "200": 214
+            },
+            "legit detail": {
+              "200": 215
+            },
+            "legit other-tenant list": {
+              "200": 215
+            },
+            "other tenant reads demo account by id": {
+              "404": 215
+            },
+            "other tenant names demo scope": {
+              "404": 215
+            },
+            "other tenant searches demo external id": {
+              "200": 214
+            },
+            "other tenant investigates demo account": {
+              "404": 214
+            },
+            "other tenant reviews demo action": {
+              "404": 214
+            },
+            "other tenant audit export": {
+              "403": 214
+            },
+            "cross-client detail (ortho scope, derm id)": {
+              "404": 214
+            },
+            "auditor outside grant": {
+              "404": 214
+            },
+            "demo user reads other tenant id": {
+              "404": 214
+            },
+            "no token": {
+              "401": 214
+            },
+            "forged token": {
+              "401": 214
+            }
+          },
+          "latencyMs": {
+            "n": 3000,
+            "p50": 14.8,
+            "p95": 23.4,
+            "p99": 38.6,
+            "max": 303.5,
+            "mean": 16.5
+          }
+        }
+      },
+      "checks": [
+        {
+          "name": "no response contains a foreign identifier",
+          "pass": true,
+          "detail": null
+        },
+        {
+          "name": "every foreign request is refused (401/403/404)",
+          "pass": true,
+          "detail": ""
+        },
+        {
+          "name": "every legitimate request succeeds under the same load",
+          "pass": true,
+          "detail": ""
+        }
+      ],
+      "notes": [],
+      "error": null
+    },
+    {
+      "name": "scale",
+      "title": "Bulk import and read latency at 1k / 10k / 50k accounts",
+      "durationMs": 14231,
+      "metrics": {
+        "1k.wholeFileUpload": {
+          "bytes": 113154,
+          "status": 200,
+          "error": null,
+          "ms": 33
+        },
+        "1k.import": {
+          "accounts": 1000,
+          "parts": 1,
+          "accepted": 1000,
+          "statuses": {
+            "200": 1
+          },
+          "totalSeconds": 0.2,
+          "rowsPerSecond": 4798,
+          "slowestPartMs": 208,
+          "server": {
+            "samples": 2,
+            "rssStartMb": 121.8,
+            "rssEndMb": 122.1,
+            "rssPeakMb": 122.1,
+            "heapEndMb": 18.9,
+            "eventLoopP99MaxMs": 209.6,
+            "eventLoopMaxMs": 209.6
+          },
+          "dbMb": 4.8,
+          "walMb": 5.3
+        },
+        "1k.readLatencyMs": {
+          "readers": 8,
+          "requests": 400,
+          "statuses": {
+            "200": 400
+          },
+          "queue_first_page": {
+            "n": 53,
+            "p50": 11,
+            "p95": 21.5,
+            "p99": 22.1,
+            "max": 22.1,
+            "mean": 12.2
+          },
+          "queue_deep_page": {
+            "n": 71,
+            "p50": 12.2,
+            "p95": 20.5,
+            "p99": 59.3,
+            "max": 59.3,
+            "mean": 13.8
+          },
+          "queue_view_filter": {
+            "n": 62,
+            "p50": 12.2,
+            "p95": 22.9,
+            "p99": 34.6,
+            "max": 34.6,
+            "mean": 13.8
+          },
+          "search_exact": {
+            "n": 69,
+            "p50": 10.8,
+            "p95": 24.4,
+            "p99": 46.4,
+            "max": 46.4,
+            "mean": 13
+          },
+          "search_partial": {
+            "n": 70,
+            "p50": 12.8,
+            "p95": 27.5,
+            "p99": 40.7,
+            "max": 40.7,
+            "mean": 14.4
+          },
+          "account_detail": {
+            "n": 75,
+            "p50": 10.8,
+            "p95": 25.5,
+            "p99": 39.8,
+            "max": 39.8,
+            "mean": 13.4
+          }
+        },
+        "1k.opsOutboxMs": {
+          "n": 3,
+          "p50": 1.2,
+          "p95": 26.9,
+          "p99": 26.9,
+          "max": 26.9,
+          "mean": 9.6
+        },
+        "1k.edi835": {
+          "claims": 1000,
+          "bytes": 199797,
+          "previewStatus": 200,
+          "previewMs": 111,
+          "matched": 1000,
+          "ingestStatus": 200,
+          "ingestMs": 958,
+          "ingestError": null
+        },
+        "5k.wholeFileUpload": {
+          "bytes": 564880,
+          "status": 200,
+          "error": null,
+          "ms": 120
+        },
+        "5k.import": {
+          "accounts": 5000,
+          "parts": 1,
+          "accepted": 5000,
+          "statuses": {
+            "200": 1
+          },
+          "totalSeconds": 1,
+          "rowsPerSecond": 5211,
+          "slowestPartMs": 957,
+          "server": {
+            "samples": 2,
+            "rssStartMb": 151.6,
+            "rssEndMb": 151.9,
+            "rssPeakMb": 151.9,
+            "heapEndMb": 30.2,
+            "eventLoopP99MaxMs": 956.8,
+            "eventLoopMaxMs": 956.8
+          },
+          "dbMb": 16,
+          "walMb": 16.6
+        },
+        "5k.readLatencyMs": {
+          "readers": 8,
+          "requests": 400,
+          "statuses": {
+            "200": 400
+          },
+          "queue_first_page": {
+            "n": 65,
+            "p50": 31.8,
+            "p95": 66.4,
+            "p99": 98.8,
+            "max": 98.8,
+            "mean": 36.1
+          },
+          "queue_deep_page": {
+            "n": 59,
+            "p50": 36.9,
+            "p95": 78.9,
+            "p99": 137.1,
+            "max": 137.1,
+            "mean": 42.2
+          },
+          "queue_view_filter": {
+            "n": 73,
+            "p50": 32.7,
+            "p95": 62.9,
+            "p99": 108.4,
+            "max": 108.4,
+            "mean": 36.4
+          },
+          "search_exact": {
+            "n": 75,
+            "p50": 29.5,
+            "p95": 52.5,
+            "p99": 163.1,
+            "max": 163.1,
+            "mean": 34
+          },
+          "search_partial": {
+            "n": 57,
+            "p50": 30,
+            "p95": 73.6,
+            "p99": 79.8,
+            "max": 79.8,
+            "mean": 33.5
+          },
+          "account_detail": {
+            "n": 71,
+            "p50": 28.7,
+            "p95": 62.2,
+            "p99": 78.8,
+            "max": 78.8,
+            "mean": 32.5
+          }
+        },
+        "5k.opsOutboxMs": {
+          "n": 3,
+          "p50": 1.1,
+          "p95": 121.8,
+          "p99": 121.8,
+          "max": 121.8,
+          "mean": 41.2
+        },
+        "5k.edi835": {
+          "claims": 4250,
+          "bytes": 851121,
+          "previewStatus": 200,
+          "previewMs": 447,
+          "matched": 4250,
+          "ingestStatus": 200,
+          "ingestMs": 3927,
+          "ingestError": null
+        }
+      },
+      "checks": [
+        {
+          "name": "1k: every account imported",
+          "pass": true,
+          "detail": "1000/1000"
+        },
+        {
+          "name": "1k: re-import is idempotent",
+          "pass": true,
+          "detail": "accepted 0, duplicates 1000"
+        },
+        {
+          "name": "1k: concurrent reads never fail",
+          "pass": true,
+          "detail": "{\"200\":400}"
+        },
+        {
+          "name": "1k: search finds the last imported account",
+          "pass": true,
+          "detail": null
+        },
+        {
+          "name": "1k: 1000-claim 835 previews and ingests",
+          "pass": true,
+          "detail": "preview 200, ingest 200"
+        },
+        {
+          "name": "1k: server healthy at the end",
+          "pass": true,
+          "detail": null
+        },
+        {
+          "name": "5k: every account imported",
+          "pass": true,
+          "detail": "5000/5000"
+        },
+        {
+          "name": "5k: re-import is idempotent",
+          "pass": true,
+          "detail": "accepted 0, duplicates 5000"
+        },
+        {
+          "name": "5k: concurrent reads never fail",
+          "pass": true,
+          "detail": "{\"200\":400}"
+        },
+        {
+          "name": "5k: search finds the last imported account",
+          "pass": true,
+          "detail": null
+        },
+        {
+          "name": "5k: 4250-claim 835 previews and ingests",
+          "pass": true,
+          "detail": "preview 200, ingest 200"
+        },
+        {
+          "name": "5k: server healthy at the end",
+          "pass": true,
+          "detail": null
+        }
+      ],
+      "notes": [],
+      "error": null
+    },
+    {
+      "name": "soak",
+      "title": "Sustained mixed workload (memory and event-loop lag)",
+      "durationMs": 23919,
+      "metrics": {
+        "workload": {
+          "seconds": 22,
+          "requests": 6141,
+          "throughputPerSecond": 307,
+          "statuses": {
+            "200": 6086,
+            "422": 55
+          },
+          "approvals": 59,
+          "importsCommitted": 13
+        },
+        "latencyMs": {
+          "search": {
+            "n": 949,
+            "p50": 32.1,
+            "p95": 59.2,
+            "p99": 97.4,
+            "max": 137.8,
+            "mean": 34.8
+          },
+          "reviews": {
+            "n": 688,
+            "p50": 28.2,
+            "p95": 53,
+            "p99": 101.3,
+            "max": 127.4,
+            "mean": 31
+          },
+          "detail": {
+            "n": 1586,
+            "p50": 30.8,
+            "p95": 63.7,
+            "p99": 112.3,
+            "max": 145.2,
+            "mean": 34.5
+          },
+          "queue": {
+            "n": 1623,
+            "p50": 34,
+            "p95": 63.3,
+            "p99": 97.3,
+            "max": 136.2,
+            "mean": 37.3
+          },
+          "investigate": {
+            "n": 948,
+            "p50": 36.5,
+            "p95": 87.2,
+            "p99": 122.2,
+            "max": 188.4,
+            "mean": 42.1
+          },
+          "correct": {
+            "n": 146,
+            "p50": 44.3,
+            "p95": 90.8,
+            "p99": 121.2,
+            "max": 155.1,
+            "mean": 49.7
+          },
+          "import": {
+            "n": 13,
+            "p50": 104.9,
+            "p95": 196.6,
+            "p99": 196.6,
+            "max": 196.6,
+            "mean": 113.4
+          },
+          "edi_preview": {
+            "n": 36,
+            "p50": 55.6,
+            "p95": 108.5,
+            "p99": 232.6,
+            "max": 232.6,
+            "mean": 61.8
+          },
+          "call_start": {
+            "n": 57,
+            "p50": 48,
+            "p95": 111.6,
+            "p99": 266.4,
+            "max": 266.4,
+            "mean": 56
+          },
+          "ops_outbox": {
+            "n": 18,
+            "p50": 48.3,
+            "p95": 349.7,
+            "p99": 349.7,
+            "max": 349.7,
+            "mean": 79
+          },
+          "approve": {
+            "n": 59,
+            "p50": 43.9,
+            "p95": 117.6,
+            "p99": 124.1,
+            "max": 124.1,
+            "mean": 50.9
+          },
+          "tick": {
+            "n": 18,
+            "p50": 67.9,
+            "p95": 115.6,
+            "p99": 115.6,
+            "max": 115.6,
+            "mean": 68.1
+          }
+        },
+        "server": {
+          "samples": 22,
+          "rssStartMb": 129.3,
+          "rssEndMb": 173.9,
+          "rssPeakMb": 173.9,
+          "heapEndMb": 28.6,
+          "eventLoopP99MaxMs": 374.3,
+          "eventLoopMaxMs": 374.3,
+          "heapSlopeMbPerMinSecondHalf": 14.13,
+          "heapAtQuarterMb": 36.8,
+          "dbMbAtEnd": 20.9,
+          "walMbAtEnd": 8.1
+        },
+        "invariants": {
+          "accounts": 4635,
+          "proposals": 60,
+          "decisions": 59,
+          "outbox": 59,
+          "connectorReceived": 54,
+          "auditEvents": 11137
+        }
+      },
+      "checks": [
+        {
+          "name": "no 5xx or transport errors during the soak",
+          "pass": true,
+          "detail": "{\"200\":6086,\"422\":55}"
+        },
+        {
+          "name": "heap does not grow without bound (end minus 25% mark < 150 MB)",
+          "pass": true,
+          "detail": "36.8 -> 28.6 MB"
+        },
+        {
+          "name": "safety invariants hold after the soak",
+          "pass": true,
+          "detail": ""
+        },
+        {
+          "name": "server healthy, no unhandled errors",
+          "pass": true,
+          "detail": "health 200  in 4 ms; alive=true; AR Resolve (SYNTHETIC environment, live actions disabled) on http://localhost:46281\ndatabase: /tmp/ar-stress-soak-kXYeyd/ar.db; embedded outbox worker: on\n"
+        }
+      ],
+      "notes": [],
+      "error": null
+    }
+  ],
+  "failed": []
+}

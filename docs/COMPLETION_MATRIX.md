@@ -180,3 +180,22 @@ Status values: **Implemented** (works and tested on synthetic data), **Mocked** 
 | VAL01 | Value / operations card on Insights: measured counts and assumption-based estimates, each labelled, assumptions shown | Implemented (assumptions are placeholders) | tests/maya-followups.test.ts "value card…" |
 | VOI01 | Spoken read-back of dollars, dates and references in words | Implemented | tests/maya-followups.test.ts "spoken read-back…" |
 | UI | Access and Data governance pages, value card: browser check as supervisor, second reviewer and specialist with no console errors | Implemented | ADR 0080 |
+
+## Stress, load and resilience (ADR 0095, migration 095)
+
+| Area | Requirement | Status | Evidence |
+| --- | --- | --- | --- |
+| STR01 | Repeatable harness: real server and workers on a temp DB, real HTTP API, Node built-ins only; `npm run stress:quick` (CI) and `npm run stress` (full) | Implemented | scripts/stress/; docs/stress/RESULTS.md |
+| STR02 | Bulk import 1k/10k/50k synthetic accounts (chunked under the 1 MB body limit), idempotent re-import, time, memory and DB size | Implemented (measured) | docs/stress/RESULTS.md "Scale" |
+| STR03 | Queue, view, search and detail latency with concurrent readers; ranking and paging in SQL | Implemented (measured) | tests/stress-fixes.test.ts "queue ranking…" |
+| STR04 | Concurrent investigations (many accounts, same account), same-revision corrections: exactly one wins | Implemented | scenario `investigations` |
+| STR05 | Approval races and webhook replays with three workers and API ticks: exactly one dispatch per approval, outbox idempotent | Implemented | scenario `approvals`; tests/stress-fixes.test.ts "stale snapshot" |
+| STR06 | SIGKILL of workers and of the API process mid-dispatch, restart: no duplicate sends, uncertain rows recovered by read-back | Implemented | scenario `crash`; tests/stress-fixes.test.ts "waits for a lock" |
+| STR07 | Hostile input: oversized and chunked bodies, deep JSON, malformed paths, fuzzed CSV and X12, 835s with thousands of claims: clean 4xx, no crash, no hang | Implemented | scenario `hostile`; tests/stress-fixes.test.ts "oversized body", "percent-encoding", "500 service lines" |
+| STR08 | Concurrent simulated calls: payer-line concurrency and hourly limits hold | Implemented | scenario `voice` |
+| STR09 | Tenant/client scope isolation under concurrent load | Implemented | scenario `isolation` |
+| STR10 | Soak: memory slope and event-loop lag under mixed load | Implemented (5 min full mode) | scenario `soak` |
+| STR11 | Audit chain safe across processes (append in a transaction); incremental verification with a periodic full walk | Implemented | tests/stress-fixes.test.ts "two processes append", "incremental chain check" |
+| STR12 | Every fix mutation-tested | Implemented | `npm run stress:mutate` |
+| STR13 | Multi-node or PostgreSQL deployment; load from real customer data and real connectors | Blocked (single-node SQLite only; see ADR 0095 reversal conditions) | ADR 0095 |
+| STR14 | Outbox tick bounded per batch so a slow synchronous connector cannot hold the API event loop | Blocked (known gap; sim connectors are fast and live adapters are disabled) | ADR 0095 "Known gaps" |
