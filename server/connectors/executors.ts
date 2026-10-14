@@ -4,6 +4,7 @@ import { createHmac } from 'node:crypto';
 import { type Db, one, run } from '../db/db.ts';
 import { newId, nowIso } from '../util.ts';
 import { simPm } from './sim-pm.ts';
+import { isSyntheticDeployment } from '../config.ts';
 
 export class ConnectorTimeout extends Error {}
 export class LiveExecutionDisabled extends Error {}
@@ -81,6 +82,8 @@ export const livePayer: Connector = {
 };
 
 export function connectorFor(name: string): Connector {
+  // ADR 0090: simulators never execute outside the synthetic environment; they fall through to the refusing live boundary.
+  if ((name === 'sim_payer' || name === 'sim_pm') && !isSyntheticDeployment()) return livePayer;
   if (name === 'sim_payer') return simPayer;
   if (name === 'internal_worklist') return internalWorklist;
   if (name === 'sim_pm') return simPm;

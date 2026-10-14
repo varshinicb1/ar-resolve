@@ -32,14 +32,21 @@ export function go(path: string) { location.hash = path; }
 
 function Login({ onDone }: { onDone: () => void }) {
   const [users, setUsers] = useState<{ userId: string; displayName: string }[]>([]);
-  const [err, setErr] = useState('');
-  useEffect(() => { api.get<typeof users>('/api/dev/users').then(setUsers).catch((e) => setErr(errorText(e))); }, []);
+  const [auth, setAuth] = useState<{ sso: boolean; devLogin: boolean; environment: string } | null>(null);
+  const [err, setErr] = useState(() => new URLSearchParams(location.search).get('login_error') ? `Sign-in failed (${new URLSearchParams(location.search).get('login_error')}).` : '');
+  useEffect(() => {
+    api.get<{ sso: boolean; devLogin: boolean; environment: string }>('/api/auth/config').then((a) => {
+      setAuth(a);
+      if (a.devLogin) api.get<typeof users>('/api/dev/users').then(setUsers).catch((e) => setErr(errorText(e)));
+    }).catch((e) => setErr(errorText(e)));
+  }, []);
   return (
     <main className="login">
       <div className="panel stack">
         <div className="brand" style={{ color: 'var(--ink)', padding: 0 }}>AR <span style={{ color: 'var(--verified)' }}>Resolve</span></div>
-        <h1>Sign in to the synthetic environment</h1>
-        <p className="muted">Development identities only. Every account, amount and transcript here is synthetic. Live payer actions are disabled. Production requires SSO with MFA.</p>
+        <h1>{auth && !auth.devLogin ? 'Sign in' : 'Sign in to the synthetic environment'}</h1>
+        {auth?.devLogin && <p className="muted">Development identities only. Every account, amount and transcript here is synthetic. Live payer actions are disabled. Production requires SSO with MFA.</p>}
+        {auth?.sso && <div><button className="primary" onClick={() => location.assign(`/api/auth/login?returnTo=${encodeURIComponent('/' + location.hash)}`)}>Sign in with single sign-on</button></div>}
         {err && <div className="callout danger">{err}</div>}
         <div>
           {users.map((u) => (
@@ -61,7 +68,10 @@ export function App() {
   const [counts, setCounts] = useState<Record<string, number>>({});
 
   const loadMe = useCallback(async () => {
-    if (!session.token) { setMe(null); setLoaded(true); return; }
+    if (!session.token) {
+      // Single sign-on cookie session (ADR 0090): fetch the CSRF token; no session means show sign-in.
+      try { session.csrf = (await api.get<{ csrfToken: string }>('/api/auth/session')).csrfToken; } catch { setMe(null); setLoaded(true); return; }
+    }
     try {
       const m = await api.get<Me>('/api/me');
       const valid = m.scopes.find((s) => s.tenantId === session.tenantId && s.clientId === session.clientId) ?? m.scopes[0];
@@ -109,7 +119,9 @@ export function App() {
             </a>
           ))}
         </nav>
-        <div className="side-foot">PHASE 0 · SYNTHETIC<br />No PHI · Live executor disabled<br />Scenario packs: drafts run (synthetic only)</div>
+        {me.environment === 'synthetic'
+          ? <div className="side-foot">PHASE 0 · SYNTHETIC<br />No PHI · Live executor disabled<br />Scenario packs: drafts run (synthetic only)</div>
+          : <div className="side-foot">{me.environment.toUpperCase()}<br />Approved rule activations only<br />Simulators disabled</div>}
       </aside>
       <div>
         <div className="top">
@@ -125,7 +137,12 @@ export function App() {
           <div className="gap8">
             <span className="badge b-review">Synthetic · Live actions disabled</span>
             <span className="small muted">{me.displayName} · {roles.join(', ')}</span>
-            <button onClick={() => { session.clear(); setMe(null); }}>Sign out</button>
+            <button onClick={async () => {
+              let end: string | null = null;
+              if (!session.token && session.csrf) { try { end = (await api.post<{ endSessionUrl: string | null }>('/api/auth/logout')).endSessionUrl; } catch { /* session already gone */ } }
+              session.clear(); setMe(null);
+              if (end) location.assign(end);
+            }}>Sign out</button>
           </div>
         </div>
         <div className="envbar">Synthetic environment. Accounts, references and payer responses are invented. Calls run against a simulated payer line; the payer connector is a simulator.</div>

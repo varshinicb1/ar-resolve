@@ -11,6 +11,7 @@ import { audit } from '../services/audit.ts';
 import type { Scope } from '../services/auth.ts';
 import { LiveExecutionDisabled } from './executors.ts';
 import { phiLiveReasons } from '../services/governance.ts';
+import { isSyntheticDeployment } from '../config.ts';
 
 export const ENVIRONMENT_FOR_GATE = (process.env.AR_ENVIRONMENT ?? 'synthetic') as 'synthetic' | 'shadow' | 'assisted_live';
 
@@ -126,7 +127,7 @@ export function getConfig(db: Db, scope: Scope, connectorId: string): ConnectorC
   const a = adapterFor(connectorId);
   const row = one<ConfigRow>(db, 'SELECT * FROM connector_configs WHERE tenant_id=? AND client_id=? AND connector_id=?', scope.tenantId, scope.clientId, connectorId);
   if (row) return toConfig(row);
-  return { connectorId, mode: a.descriptor.defaultMode, enabled: a.descriptor.defaultMode !== 'disabled_live', settings: structuredClone(DEFAULT_SETTINGS[connectorId] ?? {}),
+  return { connectorId, mode: a.descriptor.defaultMode, enabled: a.descriptor.defaultMode !== 'disabled_live' && (a.descriptor.defaultMode !== 'simulated' || isSyntheticDeployment()), settings: structuredClone(DEFAULT_SETTINGS[connectorId] ?? {}),
     mappingId: null, mappingVersion: null, updatedBy: 'system', updatedAt: '' };
 }
 
@@ -339,6 +340,7 @@ function precheck(db: Db, scope: Scope, connectorId: string, req: ConnectorReque
     return refuse('Live mode is not enabled for this connector');
   }
   if (!config.enabled) return refuse('Connector is disabled for this client');
+  if (config.mode === 'simulated' && !isSyntheticDeployment()) return refuse('Simulators do not run outside the synthetic environment (ADR 0090)');
   const c = circuit(db, scope, connectorId);
   if (c.state === 'open') {
     const age = now().getTime() - Date.parse(c.opened_at ?? nowIso());

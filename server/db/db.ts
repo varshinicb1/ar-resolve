@@ -24,6 +24,12 @@ export function openDb(path: string): Db {
   return db;
 }
 
+/** Migration files not yet recorded as applied (readiness check, ADR 0090). */
+export function pendingMigrations(db: Db): string[] {
+  const done = new Set((db.prepare('SELECT name FROM schema_migrations').all() as { name: string }[]).map((r) => r.name));
+  return MIGRATIONS.filter((m) => !done.has(m));
+}
+
 let depth = 0;
 
 // BEGIN IMMEDIATE takes the write lock up front so check-then-update sequences

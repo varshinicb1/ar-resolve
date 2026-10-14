@@ -11,12 +11,15 @@ export const session = {
   clientId: store.get('ar.client'),
   setToken(t: string | null) { this.token = t; store.set('ar.token', t); },
   setScope(tenantId: string, clientId: string) { this.tenantId = tenantId; this.clientId = clientId; store.set('ar.tenant', tenantId); store.set('ar.client', clientId); },
-  clear() { this.setToken(null); this.tenantId = null; this.clientId = null; store.set('ar.tenant', null); store.set('ar.client', null); },
+  /** CSRF token of a single sign-on cookie session (ADR 0090); kept in memory only. */
+  csrf: null as string | null,
+  clear() { this.setToken(null); this.csrf = null; this.tenantId = null; this.clientId = null; store.set('ar.tenant', null); store.set('ar.client', null); },
 };
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = { 'content-type': 'application/json' };
   if (session.token) headers.authorization = `Bearer ${session.token}`;
+  else if (session.csrf && method !== 'GET') headers['x-csrf-token'] = session.csrf;
   if (session.tenantId && session.clientId) { headers['x-tenant'] = session.tenantId; headers['x-client'] = session.clientId; }
   const r = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
   const json = await r.json().catch(() => ({}));
