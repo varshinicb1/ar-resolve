@@ -8,6 +8,7 @@ import { register as glue } from './routes/glue.ts';
 import { register as governance } from './routes/governance.ts';
 import { register as dataGovernance } from './routes/data-governance.ts';
 import { register as auth } from './routes/auth.ts';
+import { register as liveIntegrations } from './routes/live-integrations.ts';
 
 // Each feature workstream adds one entry here and keeps its routes in its own file.
 export const MODULES: ((api: ModuleApi) => void)[] = [
@@ -20,4 +21,5 @@ export const MODULES: ((api: ModuleApi) => void)[] = [
   governance,
   dataGovernance,
   auth, // ADR 0090 single sign-on
+  liveIntegrations,
 ];

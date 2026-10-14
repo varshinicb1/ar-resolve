@@ -125,7 +125,7 @@ Status values: **Implemented** (works and tested on synthetic data), **Mocked** 
 | INT05 | EDI upload → preview → ingest bound to sha256; identity match (claim ref + patient token + DOS); mismatches blocked and audited; idempotent | Implemented | integrations "835 ingestion produces verified facts…" |
 | INT06 | Simulated clearinghouse 276→277, 270→271 with latency and fault injection; structured-status-first step in investigate (per-client, default off) | Mocked (simulator) | integrations "simulated clearinghouse…" |
 | INT07 | FHIR R4 read (EOB, Coverage) with SMART Backend Services auth | Mocked (local mock server; real EHR registration Blocked) | integrations "FHIR R4 mock round trip…" |
-| INT08 | Availity, Optum/Change Healthcare, Epic, athenahealth, SFTP EDI, Twilio adapters | Blocked (disabled by design; throw LiveExecutionDisabled) | integrations "live adapters refuse…" |
+| INT08 | Availity, Optum/Change Healthcare, Epic, athenahealth, SFTP EDI, Twilio adapters | Blocked (disabled by design; throw LiveExecutionDisabled). Availity, Optum and Twilio now have gated real adapters: see ADR 0100 section | integrations "live adapters refuse…" |
 | INT09 | Generic signed webhooks: HMAC, timestamp window, server-side tenant resolution, dedupe, persist-before-ack, monotonic status with correction | Implemented (simulated provider) | integrations "signed connector webhooks…" |
 | INT10 | Integrations admin UI with connector health (supervisor; `integration_admin` permission) | Implemented | web/src/pages/Integrations.tsx |
 | INT11 | Scope isolation and permissions across all integration routes | Implemented | integrations "integration scope isolation and permissions" |
@@ -201,3 +201,20 @@ Status values: **Implemented** (works and tested on synthetic data), **Mocked** 
 | PKG01 | Multi-stage Dockerfile, non-root, read-only root FS, healthcheck; compose for a single-node pilot | Implemented | Image built and run locally (ADR 0090 "Verification") |
 | CI01 | GitHub Actions: typecheck, tests, build, eval, kb:verify, demo, fail-closed and container checks, no secrets | Implemented (not yet run on GitHub) | .github/workflows/ci.yml |
 | SEC01 | Penetration test, SOC 2 readiness, BAAs, policies | Blocked (owner) | docs/SECURITY.md |
+## Real integrations (ADR 0100, migration 100)
+
+| Area | Requirement | Status | Evidence |
+| --- | --- | --- | --- |
+| LIV01 | One config reader (`server/connectors/live/config.ts`): explicit mode per provider (off, sandbox, production), secrets from env or `<NAME>_FILE`, documented base URLs, vetted overrides | Implemented | tests/live-integrations.test.ts "config…" |
+| LIV02 | Provider gate: mode + credentials + recorded, unrevoked authorization for the tenant/client; production also needs the ADR 0030/0070 live gate, `AR_PHI_MODE=on` and the connector switched to live; fails closed with reasons recorded as refused events | Implemented (mutation-tested) | tests/live-integrations.test.ts "gate…", "production gate…" |
+| LIV03 | Sandbox sends synthetic or vendor-documented test data only (`sandbox_requires_synthetic`) | Implemented (mutation-tested) | tests/live-integrations.test.ts "sandbox…" |
+| LIV04 | HTTP client: timeout, no redirects, 5 MB cap, retries with backoff only for idempotent reads on 429/503/network errors; circuit breaker reused | Implemented | tests/live-integrations.test.ts "retries and circuit", "timeouts" |
+| LIV05 | Stedi raw X12 eligibility (270/271) and claim status (276/277) into the existing evidence/fact pipeline; 999 mapped to rejected | Implemented against documented payloads on a local mock; real sandbox call not run (no key in this environment) | tests/live-integrations.test.ts "Stedi…" |
+| LIV06 | Stedi 835 ERA polling and report mapping with JSON path provenance; only matched claims attached, unmatched counted | Implemented against documented payloads on a local mock; ERA enrollment per payer Blocked | tests/live-integrations.test.ts "835…" |
+| LIV07 | Optum eligibility v3 and claim status v2 (JSON) with OAuth client credentials | Implemented against documented sandbox values on a local mock; eligibility stored as events only | tests/live-integrations.test.ts "Optum…" |
+| LIV08 | Availity Coverages with OAuth client credentials, polling, demo scenario header | Implemented against a local mock; stored as events only; Claim Statuses and Remittance NOT FOUND | tests/live-integrations.test.ts "Availity…" |
+| LIV09 | Twilio test-credential call to documented magic numbers only | Implemented (sandbox); production calls Blocked (Conversation Relay not wired) | tests/live-integrations.test.ts "Twilio…" |
+| LIV10 | Slack incoming webhook and Postmark email behind the gate; opaque summaries only | Implemented (Postmark has no BAA: never for PHI) | tests/live-integrations.test.ts "notifications…" |
+| LIV11 | `npm run smoke:live -- <provider>`: documented test data only, refuses without keys or in production, results recorded | Implemented; PASS for all six with `--mock`; real sandbox runs not done (no keys here) | scripts/smoke-live.ts; tests/live-integrations.test.ts "overview/smoke" |
+| LIV12 | Integrations page: per connector mode, env var presence (names only), authorization, gate reasons, last smoke, revoke | Implemented | web/src/pages/LiveConnectors.tsx |
+| LIV13 | Member ID crosswalk, ERA reconciliation into the outcome ledger, Epic and athenahealth adapters | Blocked | ADR 0100 "Blocked" |
