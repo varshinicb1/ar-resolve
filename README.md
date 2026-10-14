@@ -18,14 +18,17 @@ Development with hot reload: `npm run dev` (API on 8080, UI on http://localhost:
 
 | Command | What it does |
 | --- | --- |
-| `npm test` | 139 tests in 19 suites over the real HTTP API (see below) |
+| `npm test` | 167 tests in 22 suites over the real HTTP API (see below) |
 | `npm run demo` | The Phase 0 acceptance journey end to end through the API, including a restart |
 | `npm run eval` | Regenerates `evaluation/REPORT.md`: DED01 40/40, all packs 141/141, selection 17/17, 3-client cohort 35/35 |
 | `npm run kb:verify` | Knowledge base integrity: provenance, hashes, duplicates, citations, and that every code the routing and the selection map use exists and is active |
 | `npm run worker` | Standalone outbox worker (start the API with `AR_WORKER=off` to use it) |
+| `npm run backup` / `npm run restore` / `npm run admin` | Encrypted online backup, verified restore, operator provisioning of users, grants and SSO links (ADR 0090, docs/OPERATIONS.md) |
 | `npm run typecheck` | TypeScript check |
 
-Test suites: workflow 5, review/execution 11, scope 2, rule engine 3, scenario packs 6, rule studio 4, knowledge base 6, routing consistency 3, X12 7, integrations 9, 835 remittance 4, follow-ups 5, outcomes 4, write-back 5, controls/analytics 4, voice 16, verbal-request guard 3, clinic-receptionist port (PHI gate, Guard, telephony, notifications, SMART) 13, port follow-ups (keys, sealing, rotation, retention, deletion, es/pt Guard, read-back, recording, value) 9.
+Test suites: workflow 5, review/execution 11, scope 2, rule engine 3, scenario packs 6, rule studio 4, knowledge base 6, routing consistency 3, X12 7, integrations 9, 835 remittance 4, follow-ups 5, outcomes 4, write-back 5, controls/analytics 4, voice 16, verbal-request guard 3, clinic-receptionist port (PHI gate, Guard, telephony, notifications, SMART) 13, port follow-ups (keys, sealing, rotation, retention, deletion, es/pt Guard, read-back, recording, value) 9, production hardening 13, single sign-on 11, backups 4.
+
+Deploying a pilot (staging/production, SSO, Docker, backups): see [docs/OPERATIONS.md](docs/OPERATIONS.md) and [docs/SECURITY.md](docs/SECURITY.md).
 
 ## What each page does
 

@@ -1,0 +1,70 @@
+# CI (ADR 0090). No secrets: every test runs against local mock servers and synthetic data.
+# Action versions from the official READMEs (https://github.com/actions/setup-node, retrieved 2026-10-14).
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: node --version
+      - run: npm ci --no-audit --no-fund
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Tests
+        run: npm test
+      - name: Build UI
+        run: npm run build
+      - name: Evaluation (fixture agreement)
+        run: npm run eval
+      - name: Knowledge base verification
+        run: npm run kb:verify
+      - name: Demo script
+        run: npm run demo
+      - name: Production config fails closed
+        run: |
+          set +e
+          AR_ENV=production node --disable-warning=ExperimentalWarning server/main.ts
+          code=$?
+          test "$code" -eq 78 || { echo "expected exit 78, got $code"; exit 1; }
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Build image
+        run: docker build -t ar-resolve:ci .
+      - name: Image refuses to start unconfigured
+        run: |
+          set +e
+          docker run --rm ar-resolve:ci
+          code=$?
+          test "$code" -eq 78 || { echo "expected exit 78, got $code"; exit 1; }
+      - name: Synthetic container becomes ready on a read-only root filesystem
+        run: |
+          docker run -d --name ar --read-only --tmpfs /tmp -e AR_ENV=synthetic -e AR_DB=/data/ar.db -p 8080:8080 ar-resolve:ci
+          for i in $(seq 1 30); do curl -fsS localhost:8080/readyz && break; sleep 1; done
+          curl -fsS localhost:8080/readyz
+          docker stop -t 20 ar
+          test "$(docker inspect --format '{{.State.ExitCode}}' ar)" -eq 0

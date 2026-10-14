@@ -24,7 +24,7 @@ Status values: **Implemented** (works and tested on synthetic data), **Mocked** 
 | FR16 | Halt controls | Implemented (client, payer and workflow via UI; tenant and global via DB) | pause test; tests/controls-analytics.test.ts |
 | Security | Server-derived tenant/client scope, roles, separation of duties | Implemented | scope tests |
 | Security | Signed, replay-protected receipt webhook | Implemented (simulated payer) | webhook test |
-| Security | SSO/MFA, secrets manager, encryption at rest, BAA | Blocked | Required before any PHI (docs/08) |
+| Security | SSO/MFA, secrets manager, encryption at rest, BAA | SSO Implemented (OIDC + PKCE, MFA delegated to the IdP); secrets manager, BAA Blocked | See "Production hardening" below; ADR 0090; required before any PHI (docs/08) |
 | Connectors | Live payer executor | Blocked (disabled by design) | livePayer always throws |
 | Connectors | PM/EHR, 835/277/271, clearinghouse, FHIR feeds | Mocked (simulators, local mocks, synthetic X12 files) | See "Integrations workstream"; real feeds Blocked on design partner, enrollment and BAA |
 | Eval | Fixture agreement: DED01 40/40, all packs 141/141, selection 17/17, 3-client cohort 35/35 | Implemented | evaluation/REPORT.md |
@@ -180,3 +180,24 @@ Status values: **Implemented** (works and tested on synthetic data), **Mocked** 
 | VAL01 | Value / operations card on Insights: measured counts and assumption-based estimates, each labelled, assumptions shown | Implemented (assumptions are placeholders) | tests/maya-followups.test.ts "value card…" |
 | VOI01 | Spoken read-back of dollars, dates and references in words | Implemented | tests/maya-followups.test.ts "spoken read-back…" |
 | UI | Access and Data governance pages, value card: browser check as supervisor, second reviewer and specialist with no console errors | Implemented | ADR 0080 |
+
+## Production hardening (ADR 0090, migration 090)
+
+| ID | Requirement | Status | Evidence |
+| --- | --- | --- | --- |
+| ENV01 | `AR_ENV` synthetic/staging/production; non-synthetic fails closed on missing config (exit 78, every problem listed) | Implemented | tests/production.test.ts "production fails closed…" (each setting removed in turn) |
+| ENV02 | Outside synthetic: no dev login or dev tokens, no simulator routes/executors/connectors, no draft baseline, no demo seed | Implemented | tests/production.test.ts "production app…", "outside synthetic, simulators never execute…", "production seed…" |
+| SSO01 | OIDC authorization code + PKCE S256, state bound to browser, nonce, ID token signature/iss/aud/azp/exp/iat checks, JWKS rotation | Implemented (mock IdP) | tests/sso.test.ts; real Okta/Entra/Google tenant not tested (no credentials) |
+| SSO02 | Admin-managed identity mapping, no auto-provisioning; email pre-link binds only when verified; disable revokes sessions | Implemented | tests/sso.test.ts "identity mapping…"; scripts/admin.ts |
+| SSO03 | Server-side sessions (HMAC-stored, HttpOnly/Secure/SameSite), absolute + idle expiry, logout with end-session URL, CSRF token + Origin check | Implemented | tests/sso.test.ts |
+| SSO04 | MFA | Blocked (customer IdP policy) | docs/SECURITY.md |
+| HTTP01 | CSP, HSTS (production), frame-ancestors, nosniff, referrer policy, request ids | Implemented (CSP not browser-tested) | tests/production.test.ts "security headers…" |
+| HTTP02 | CORS allowlist, rate limits per IP and credential, body limit, timeouts, error envelope without stacks | Implemented | tests/production.test.ts |
+| OPS01 | JSON logs with request ids, no PHI (redaction test) | Implemented | tests/production.test.ts "log redaction…" |
+| OPS02 | `/healthz`, `/readyz` (DB writable, migrations, keys, draining), `/metrics` behind a token | Implemented | tests/production.test.ts "/healthz, /readyz…" |
+| OPS03 | Graceful shutdown (drain, worker finishes current item); worker as a separate process | Implemented | tests/production.test.ts "graceful shutdown…", "real processes…" |
+| DATA01 | Online encrypted backups (node:sqlite backup API), schedule, restore with integrity check, tamper/wrong-key refusal | Implemented | tests/backup.test.ts; container restore verified |
+| DATA02 | Off-site backup copies, restore drills, key escrow | Blocked (owner: storage, KMS, procedure) | docs/OPERATIONS.md §5-6 |
+| PKG01 | Multi-stage Dockerfile, non-root, read-only root FS, healthcheck; compose for a single-node pilot | Implemented | Image built and run locally (ADR 0090 "Verification") |
+| CI01 | GitHub Actions: typecheck, tests, build, eval, kb:verify, demo, fail-closed and container checks, no secrets | Implemented (not yet run on GitHub) | .github/workflows/ci.yml |
+| SEC01 | Penetration test, SOC 2 readiness, BAAs, policies | Blocked (owner) | docs/SECURITY.md |

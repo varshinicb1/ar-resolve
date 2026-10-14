@@ -47,12 +47,12 @@ produces evidence an auditor would ask for.
 
 ## Known gaps (engineering)
 
-- Development sign-in only (`/api/dev/login`); production needs SSO with MFA.
+- ~~Development sign-in only~~ OIDC single sign-on is built (ADR 0090); MFA must be enforced by the customer's IdP policy.
 - No `AR_PHI_KEY` rotation or re-encryption job.
 - Note text inside the hash-bound `proposed_actions` payload is not sealed (sealing would change
   the approved hash). It is minimum-necessary text, but plaintext at rest.
 - No retention purge job (the origin's `purgeExpired` is not ported).
-- Backups and restore tests are not configured.
+- ~~Backups and restore tests are not configured.~~ Encrypted online backups and a tested restore exist (ADR 0090); off-site copies and restore drills are the operator's (docs/OPERATIONS.md).
 
 ## How to check the current state
 

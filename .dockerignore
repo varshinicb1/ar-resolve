@@ -1,0 +1,17 @@
+.git
+.github
+.claude
+node_modules
+web/dist
+data
+backups
+*.db
+*.db-wal
+*.db-shm
+*.arbk
+.env
+.env.*
+!.env.example
+docs/screenshots
+Dockerfile
+docker-compose.yml
