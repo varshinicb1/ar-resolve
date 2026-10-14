@@ -23,7 +23,10 @@
     "backup": "node --disable-warning=ExperimentalWarning scripts/backup.ts",
     "restore": "node --disable-warning=ExperimentalWarning scripts/restore.ts",
     "admin": "node --disable-warning=ExperimentalWarning scripts/admin.ts",
-    "smoke:live": "node --disable-warning=ExperimentalWarning scripts/smoke-live.ts"
+    "smoke:live": "node --disable-warning=ExperimentalWarning scripts/smoke-live.ts",
+    "stress": "node --disable-warning=ExperimentalWarning scripts/stress/run.ts",
+    "stress:quick": "node --disable-warning=ExperimentalWarning scripts/stress/run.ts --quick",
+    "stress:mutate": "node --disable-warning=ExperimentalWarning scripts/stress/mutate.ts"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

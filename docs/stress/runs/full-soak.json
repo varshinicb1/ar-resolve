@@ -1,0 +1,178 @@
+{
+  "mode": "full",
+  "command": "npm run stress -- --only=soak",
+  "startedAt": "2026-10-14T11:06:25.876Z",
+  "machine": {
+    "nproc": 4,
+    "cpuModel": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+    "totalMemoryMb": 16093,
+    "node": "v22.22.0",
+    "kernel": "6.18.44-fc-v114",
+    "platform": "linux"
+  },
+  "results": [
+    {
+      "name": "soak",
+      "title": "Sustained mixed workload (memory and event-loop lag)",
+      "durationMs": 325892,
+      "metrics": {
+        "workload": {
+          "seconds": 302,
+          "requests": 27374,
+          "throughputPerSecond": 91,
+          "statuses": {
+            "200": 26786,
+            "409": 1,
+            "422": 587
+          },
+          "approvals": 312,
+          "importsCommitted": 167
+        },
+        "latencyMs": {
+          "queue": {
+            "n": 6700,
+            "p50": 116.9,
+            "p95": 265.5,
+            "p99": 355.6,
+            "max": 797.2,
+            "mean": 133.5
+          },
+          "detail": {
+            "n": 7000,
+            "p50": 102.6,
+            "p95": 236.6,
+            "p99": 324.9,
+            "max": 532.1,
+            "mean": 116.8
+          },
+          "search": {
+            "n": 3794,
+            "p50": 119.4,
+            "p95": 272.1,
+            "p99": 369.2,
+            "max": 607.8,
+            "mean": 135.3
+          },
+          "reviews": {
+            "n": 2894,
+            "p50": 96.7,
+            "p95": 226.9,
+            "p99": 313.3,
+            "max": 486.1,
+            "mean": 111.1
+          },
+          "investigate": {
+            "n": 4311,
+            "p50": 121.5,
+            "p95": 287.3,
+            "p99": 384.9,
+            "max": 821.8,
+            "mean": 139.1
+          },
+          "import": {
+            "n": 167,
+            "p50": 286.4,
+            "p95": 463.3,
+            "p99": 725.1,
+            "max": 826.5,
+            "mean": 295.3
+          },
+          "approve": {
+            "n": 313,
+            "p50": 128.5,
+            "p95": 299.7,
+            "p99": 382.5,
+            "max": 514.7,
+            "mean": 145.2
+          },
+          "edi_preview": {
+            "n": 423,
+            "p50": 187.6,
+            "p95": 388,
+            "p99": 494.1,
+            "max": 823.1,
+            "mean": 209.1
+          },
+          "call_start": {
+            "n": 593,
+            "p50": 182.7,
+            "p95": 410.1,
+            "p99": 556.8,
+            "max": 604.2,
+            "mean": 205.7
+          },
+          "correct": {
+            "n": 757,
+            "p50": 125.6,
+            "p95": 294.7,
+            "p99": 387.7,
+            "max": 462.1,
+            "mean": 141.2
+          },
+          "ops_outbox": {
+            "n": 211,
+            "p50": 197.2,
+            "p95": 398.1,
+            "p99": 612,
+            "max": 823.6,
+            "mean": 217.9
+          },
+          "tick": {
+            "n": 211,
+            "p50": 185.2,
+            "p95": 404.1,
+            "p99": 526.3,
+            "max": 635.2,
+            "mean": 209.1
+          }
+        },
+        "server": {
+          "samples": 279,
+          "rssStartMb": 157.6,
+          "rssEndMb": 171.6,
+          "rssPeakMb": 265.3,
+          "heapEndMb": 15.1,
+          "eventLoopP99MaxMs": 496.5,
+          "eventLoopMaxMs": 496.5,
+          "heapSlopeMbPerMinSecondHalf": 1.29,
+          "heapAtQuarterMb": 109.7,
+          "dbMbAtEnd": 155.6,
+          "walMbAtEnd": 24.6
+        },
+        "invariants": {
+          "accounts": 43435,
+          "proposals": 317,
+          "decisions": 312,
+          "outbox": 312,
+          "connectorReceived": 305,
+          "auditEvents": 96076
+        }
+      },
+      "checks": [
+        {
+          "name": "no 5xx or transport errors during the soak",
+          "pass": true,
+          "detail": "{\"200\":26786,\"409\":1,\"422\":587}"
+        },
+        {
+          "name": "heap does not grow without bound (end minus 25% mark < 150 MB)",
+          "pass": true,
+          "detail": "109.7 -> 15.1 MB"
+        },
+        {
+          "name": "safety invariants hold after the soak",
+          "pass": true,
+          "detail": ""
+        },
+        {
+          "name": "server healthy, no unhandled errors",
+          "pass": true,
+          "detail": "health 200  in 2 ms; alive=true; AR Resolve (SYNTHETIC environment, live actions disabled) on http://localhost:36659\ndatabase: /tmp/ar-stress-soak-htAYhw/ar.db; embedded outbox worker: on\n"
+        }
+      ],
+      "notes": [],
+      "error": null
+    }
+  ],
+  "failed": []
+}

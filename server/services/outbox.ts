@@ -63,6 +63,17 @@ function recordReceipt(db: Db, o: OutboxRow, a: ActionRow, r: SubmitResult, via:
   afterReceipt(db, o, a.account_id, evidenceId); // follow-up from a captured commitment, or labelled policy interval
 }
 
+const RACED = Symbol('raced');
+
+/** Re-reads the outbox row inside the caller's transaction: is it still in `state` (and, for a lease, expired)? */
+function stillIn(db: Db, o: OutboxRow, state: string, leaseExpired = false): boolean {
+  const cur = one<{ state: string; lease_until: string | null; attempts: number; held_at?: string | null }>(db,
+    'SELECT * FROM action_outbox WHERE tenant_id=? AND client_id=? AND action_id=?', o.tenant_id, o.client_id, o.action_id);
+  if (!cur || cur.state !== state || cur.attempts !== o.attempts) return false;
+  if (state === 'pending' && cur.held_at) return false;
+  return !leaseExpired || (!!cur.lease_until && cur.lease_until < nowIso());
+}
+
 export interface TickReport { recovered: number; reconciled: number; dispatched: number; uncertain: number; blocked: number; skippedPaused: number; followupsDue: number }
 
 export function tick(db: Db): TickReport {
@@ -70,14 +81,16 @@ export function tick(db: Db): TickReport {
 
   // 1. Crash recovery: a dispatch whose lease expired may or may not have reached the connector.
   for (const o of all<OutboxRow>(db, `SELECT * FROM action_outbox WHERE state='dispatching' AND lease_until < ?`, nowIso())) {
-    tx(db, () => {
+    const recovered = tx(db, () => {
+      if (!stillIn(db, o, 'dispatching', true)) return false; // another worker process got there first (ADR 0095)
       const a = one<ActionRow>(db, 'SELECT * FROM proposed_actions WHERE tenant_id=? AND client_id=? AND action_id=?', o.tenant_id, o.client_id, o.action_id)!;
       setOutbox(db, o, { state: 'uncertain', lease_until: null, last_error: 'Worker lease expired mid-dispatch' });
       setAction(db, o, 'uncertain');
       setAccount(db, o, a.account_id, 'receipt_uncertain');
       ev(db, o, a.account_id, 'dispatch_uncertain', { reason: 'lease_expired' });
+      return true;
     });
-    rep.recovered++;
+    if (recovered) rep.recovered++;
   }
 
   // 2. Reconcile uncertain rows by read-back before anything else may happen.
@@ -90,6 +103,10 @@ export function tick(db: Db): TickReport {
     const pause = activePause(db, o.tenant_id, o.client_id, outboxDims(db, o));
     if (pause || o.held_at) { if (pause) holdRow(db, o, pause); rep.skippedPaused++; continue; }
     const claimed = tx(db, () => {
+      // The row list above is a snapshot taken outside this transaction. Another worker process may
+      // have claimed, sent or blocked the row since; acting on the stale copy overwrote an in-flight
+      // or accepted row with 'blocked' and logged a false dispatch_blocked (ADR 0095).
+      if (!stillIn(db, o, 'pending')) return RACED;
       const a = one<ActionRow>(db, 'SELECT * FROM proposed_actions WHERE tenant_id=? AND client_id=? AND action_id=?', o.tenant_id, o.client_id, o.action_id)!;
       const acct = one<{ revision: number }>(db, 'SELECT revision FROM accounts WHERE tenant_id=? AND client_id=? AND account_id=?', o.tenant_id, o.client_id, a.account_id)!;
       const decision = one<{ actor_id: string; payload_sha256: string; account_revision: number }>(db,
@@ -117,6 +134,7 @@ export function tick(db: Db): TickReport {
       ev(db, o, a.account_id, 'action_dispatched', { connector: o.connector, idempotencyKey: o.idempotency_key, attempt: o.attempts + 1 });
       return a;
     });
+    if (claimed === RACED) continue;
     if (!claimed) { rep.blocked++; continue; }
     // The connector call happens outside any local transaction, like a real network call.
     const connector = connectorFor(o.connector);
@@ -160,7 +178,10 @@ export function reconcile(db: Db, o: OutboxRow): boolean {
     tx(db, () => ev(db, o, a.account_id, 'reconcile_failed', { message: (err as Error).message }));
     return false;
   }
+  let applied = false;
   tx(db, () => {
+    if (!stillIn(db, o, 'uncertain')) return; // reconciled concurrently by another worker process (ADR 0095)
+    applied = true;
     if (found) {
       recordReceipt(db, o, a, found, 'read_back');
       ev(db, o, a.account_id, 'uncertain_reconciled', { outcome: 'found_at_connector', externalReference: found.externalReference, resubmitted: false });
@@ -174,7 +195,7 @@ export function reconcile(db: Db, o: OutboxRow): boolean {
       ev(db, o, a.account_id, 'uncertain_reconciled', { outcome: 'absent_at_connector', willRetry: false });
     }
   });
-  return true;
+  return applied;
 }
 
 // ---------------------------------------------------------------- signed receipt webhook (simulated payer)

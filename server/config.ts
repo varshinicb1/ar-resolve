@@ -200,7 +200,7 @@ export function loadConfig(env: Env = process.env): Config {
     shutdownGraceMs: int(env, 'AR_SHUTDOWN_GRACE_MS', 15_000, 0, 120_000, problems),
     // Pre-existing worker settings, now read here too (same names and defaults as before).
     workerIntervals: {
-      outboxMs: int(env, 'AR_WORKER_INTERVAL_MS', 1500, 100, 3_600_000, problems),
+      outboxMs: int(env, 'AR_WORKER_INTERVAL_MS', 1500, 10, 3_600_000, problems),
       notifyMs: int(env, 'AR_NOTIFY_INTERVAL_MS', 5000, 100, 3_600_000, problems),
       governanceMs: int(env, 'AR_GOVERNANCE_INTERVAL_MS', 5000, 100, 3_600_000, problems),
     },

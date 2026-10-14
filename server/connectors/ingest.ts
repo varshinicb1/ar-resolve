@@ -109,7 +109,7 @@ export function buildPreview(db: Db, scope: Scope, filename: string, raw: string
         const identity = { claimReference: c.claimId, patientToken: c.patient?.qualifier === 'MI' ? c.patient.id : null, serviceDate: c.lines[0]?.serviceDate ?? c.claimDates.statementFrom };
         const notes: string[] = [];
         if (c.reversal) notes.push(`Reversal (CLP02=22) of payer claim ${c.payerControlNumber}: reported, no observations.`);
-        const corrected = r.claims.find((o) => o !== c && !o.reversal && o.claimId === c.claimId);
+        const corrected = c.reversal ? r.claims.find((o) => o !== c && !o.reversal && o.claimId === c.claimId) : undefined; // only reversals need it (ADR 0095: was O(n^2))
         if (c.reversal && corrected) notes.push(`Corrected adjudication follows as payer claim ${corrected.payerControlNumber}.`);
         if (c.balanced === false) notes.push(`Claim does not balance: ${c.balanceNote}.`);
         if (c.lines[0] && c.lines[0].balanced === false) notes.push('Service line 1 does not balance; a zero deductible is not derived.');

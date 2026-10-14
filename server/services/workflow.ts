@@ -165,15 +165,33 @@ export function priorityOf(a: Pick<AccountRow, 'state' | 'service_date' | 'balan
   };
 }
 
+// The priority score of priorityOf() as SQL, so the queue is ranked and paged in the
+// database (ADR 0095: loading and scoring every account per request took seconds at 5k
+// accounts). Must stay equal to priorityOf(); tests/stress-fixes.test.ts compares them.
+const STATE_WEIGHT_SQL = `CASE state ${Object.entries(STATE_WEIGHT).map(([s, [w]]) => `WHEN '${s}' THEN ${w}`).join(' ')} ELSE 0 END`;
+// julianday() of a date is an exact .5 value, so (jd - 2440587.5) * 86400000 is the exact epoch ms of
+// its midnight (UTC); ?1 (now, ms) binds as REAL, and CAST truncates the non-negative day count.
+const AGE_DAYS_SQL = `MAX(0, COALESCE(CAST((?1 - (julianday(service_date) - 2440587.5) * 86400000) / 86400000 AS INTEGER), 0))`;
+export const PRIORITY_SQL = `(${STATE_WEIGHT_SQL} + MIN(30, ${AGE_DAYS_SQL} / 7) + MIN(20, balance_cents / 5000))`;
+
+function pageParam(v: number | undefined, def: number, max: number) {
+  const n = Math.floor(Number(v));
+  return Number.isFinite(n) && n >= 1 ? Math.min(max, n) : def;
+}
+
 export function listAccounts(db: Db, scope: Scope, opts: { view?: string; q?: string; page?: number; pageSize?: number }) {
   requirePerm(scope, 'view');
   const states = QUEUE_VIEWS[opts.view ?? 'all'];
   if (states === undefined) throw invalid('Unknown view');
   const params: unknown[] = [scope.tenantId, scope.clientId];
-  let where = 'tenant_id=? AND client_id=?';
-  if (states) { where += ` AND state IN (${states.map(() => '?').join(',')})`; params.push(...states); }
-  if (opts.q) { where += ' AND (external_id LIKE ? OR claim_reference LIKE ?)'; params.push(`%${opts.q}%`, `%${opts.q}%`); }
-  const rows = all<AccountRow>(db, `SELECT * FROM accounts WHERE ${where}`, ...params);
+  let where = 'tenant_id=?2 AND client_id=?3';
+  if (states) { where += ` AND state IN (${states.map((_, i) => `?${4 + i}`).join(',')})`; params.push(...states); }
+  if (opts.q) { const k = 4 + (states?.length ?? 0); where += ` AND (external_id LIKE ?${k} OR claim_reference LIKE ?${k})`; params.push(`%${String(opts.q).slice(0, 100)}%`); }
+  const pageSize = pageParam(opts.pageSize, 25, 100);
+  const page = pageParam(opts.page, 1, 1_000_000);
+  const nowMs = now().getTime();
+  const total = one<{ n: number }>(db, `SELECT COUNT(*) n FROM accounts WHERE ${where}`, nowMs, ...params)!.n;
+  const rows = all<AccountRow>(db, `SELECT * FROM accounts WHERE ${where} ORDER BY ${PRIORITY_SQL} DESC, external_id LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`, nowMs, ...params);
   const requiredCache = new Map<string, string[]>();
   const items = rows.map((a) => {
     const p = priorityOf(a);
@@ -190,13 +208,11 @@ export function listAccounts(db: Db, scope: Scope, opts: { view?: string; q?: st
       priority: p,
     };
   });
-  items.sort((x, y) => y.priority.score - x.priority.score || x.externalId.localeCompare(y.externalId));
-  const pageSize = Math.min(100, opts.pageSize ?? 25);
-  const page = Math.max(1, opts.page ?? 1);
+  // One pass over the state index for every view's count.
+  const byState = new Map(all<{ state: string; n: number }>(db, 'SELECT state, COUNT(*) n FROM accounts WHERE tenant_id=? AND client_id=? GROUP BY state', scope.tenantId, scope.clientId).map((r) => [r.state, r.n]));
   const counts = Object.fromEntries(Object.entries(QUEUE_VIEWS).map(([k, s]) => [k,
-    s ? one<{ n: number }>(db, `SELECT COUNT(*) n FROM accounts WHERE tenant_id=? AND client_id=? AND state IN (${s.map(() => '?').join(',')})`, scope.tenantId, scope.clientId, ...s)!.n
-      : one<{ n: number }>(db, 'SELECT COUNT(*) n FROM accounts WHERE tenant_id=? AND client_id=?', scope.tenantId, scope.clientId)!.n]));
-  return { total: items.length, page, pageSize, items: items.slice((page - 1) * pageSize, page * pageSize), counts };
+    s ? s.reduce((n, st) => n + (byState.get(st) ?? 0), 0) : [...byState.values()].reduce((a, b) => a + b, 0)]));
+  return { total, page, pageSize, items, counts };
 }
 
 // ---------------------------------------------------------------- investigation

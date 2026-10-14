@@ -39,6 +39,12 @@ jobs:
         run: npm run kb:verify
       - name: Demo script
         run: npm run demo
+      - name: Stress (quick) and its mutation checks
+        run: |
+          npm run stress:quick
+          npm run stress:mutate
+      - name: Live connectors against local mocks
+        run: for p in stedi availity optum twilio slack postmark; do npm run smoke:live -- "$p" --mock --no-record || exit 1; done
       - name: Production config fails closed
         run: |
           set +e
