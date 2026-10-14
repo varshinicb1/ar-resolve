@@ -19,7 +19,8 @@
     "eval": "node --disable-warning=ExperimentalWarning scripts/evaluate.ts",
     "demo": "node --disable-warning=ExperimentalWarning scripts/demo.ts",
     "fixtures": "node scripts/generate-fixtures.ts",
-    "kb:verify": "node --disable-warning=ExperimentalWarning scripts/kb-verify.ts"
+    "kb:verify": "node --disable-warning=ExperimentalWarning scripts/kb-verify.ts",
+    "smoke:live": "node --disable-warning=ExperimentalWarning scripts/smoke-live.ts"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

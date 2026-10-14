@@ -2,7 +2,7 @@
 
 An evidence-backed payer follow-up workspace for US medical AR (accounts receivable) teams. It investigates an open claim balance, resolves every material fact from a source with provenance, selects a versioned scenario pack, proposes the next action, and sends nothing until a human reviewer approves the exact payload. Approved actions go through an idempotent outbox to (simulated) connectors. Calls, remittances, follow-ups and outcomes feed back into the same evidence, fact and audit pipeline.
 
-This is not production software. Every account, payer, amount, transcript and file is synthetic. It holds no PHI. Every live integration is a typed adapter that throws `LiveExecutionDisabled`. Every rule, routing map, playbook and attribution method is a draft that needs business sign-off.
+This is not production software. Every account, payer, amount, transcript and file is synthetic. It holds no PHI. Live integrations are off by default: Stedi, Availity, Optum, Twilio, Slack and Postmark have real adapters (ADR 0100) that refuse with `LiveExecutionDisabled` until a mode, keys and a recorded authorization are present, and production also needs the PHI gate; the rest are typed adapters that always refuse. Setup: [docs/INTEGRATIONS_SETUP.md](docs/INTEGRATIONS_SETUP.md). Every rule, routing map, playbook and attribution method is a draft that needs business sign-off.
 
 ## Run it
 
@@ -18,7 +18,8 @@ Development with hot reload: `npm run dev` (API on 8080, UI on http://localhost:
 
 | Command | What it does |
 | --- | --- |
-| `npm test` | 139 tests in 19 suites over the real HTTP API (see below) |
+| `npm test` | 153 tests in 20 suites over the real HTTP API (see below) |
+| `npm run smoke:live -- <provider>` | Calls a vendor sandbox with documented test data only; refuses without keys or in production mode (`--mock` rehearses against a local mock) |
 | `npm run demo` | The Phase 0 acceptance journey end to end through the API, including a restart |
 | `npm run eval` | Regenerates `evaluation/REPORT.md`: DED01 40/40, all packs 141/141, selection 17/17, 3-client cohort 35/35 |
 | `npm run kb:verify` | Knowledge base integrity: provenance, hashes, duplicates, citations, and that every code the routing and the selection map use exists and is active |
@@ -126,7 +127,7 @@ Nothing below can be built or verified from inside this repository. Each item ne
 1. **Design partner:** one RCM organization, client portfolio, PM/EHR system and version, payer mix, patient identity crosswalk, payer IDs, and a named business owner for each pack.
 2. **BAA and data access agreement** before any real data (Gate B shadow mode, read-only), then expert-labelled cases for evaluation.
 3. **Business sign-off** of every pack, the CARC-to-pack selection map, the KB playbooks and articles, and the attribution methodology (contract definition of resolution).
-4. **Vendor accounts and contracts:** Availity and Optum/Change Healthcare (clearinghouse, trading-partner enrollment), Epic and athenahealth (app registration, FHIR endpoints), Twilio or another HIPAA-eligible telephony provider (BAA, number registration, counsel review of call law, recording and disclosure).
+4. **Vendor accounts and contracts** (what each needs: [docs/INTEGRATIONS_SETUP.md](docs/INTEGRATIONS_SETUP.md)): Stedi, Availity and Optum/Change Healthcare (clearinghouse, trading-partner enrollment), Epic and athenahealth (app registration, FHIR endpoints), Twilio or another HIPAA-eligible telephony provider (BAA, number registration, counsel review of call law, recording and disclosure).
 5. **X12 license** for the TR3 implementation guides and the full CARC/RARC/claim-status code text; a verified RARC source for RARC routing.
 6. **Payer-specific policy:** timely filing, authorization, medical necessity, bundling, business calendars and turnaround commitments.
 7. **Production infrastructure:** identity provider (SSO + MFA), managed keys, secrets manager, PostgreSQL and a workflow runtime, security review.
