@@ -100,17 +100,46 @@ export const GLOBAL_VARS: EnvVar[] = [
   { name: 'AR_LIVE_ALLOW_LOOPBACK', secret: false, required: [], note: 'Tests and local mock rehearsals only: accept http://127.0.0.1 base URL overrides.' },
 ];
 
+// ---- ADR 0110: values saved in the app, beneath the environment.
+let storedSource: (() => Env) | null = null;
+
+/** Registered by connector-settings.ts: returns the stored (already opened) values by name. */
+export function setStoredSettingsSource(fn: (() => Env) | null): void { storedSource = fn; }
+
+/** True when the environment sets this name (directly, or through `<NAME>_FILE`). Such a name is locked. */
+export function envProvides(name: string, env: Env = process.env): boolean {
+  return (env[name] ?? '').trim() !== '' || (env[`${name}_FILE`] ?? '') !== '';
+}
+
+/** The environment with stored values filled in for names it does not set. Environment always wins. */
+export function liveEnv(base: Env = process.env): Env {
+  const stored = storedSource ? storedSource() : null;
+  if (!stored) return base;
+  let out: Env | null = null;
+  for (const [k, v] of Object.entries(stored)) {
+    if (v === undefined || envProvides(k, base)) continue;
+    out ??= { ...base };
+    out[k] = v;
+  }
+  return out ?? base;
+}
+
+/** The names that may be stored for a provider: its declared variables plus its mode variable. */
+export function storableNames(p: ProviderId): string[] {
+  return [SPECS[p].modeVar, ...SPECS[p].vars.map((v) => v.name)];
+}
+
 export function isProvider(p: string): p is ProviderId {
   return (PROVIDERS as readonly string[]).includes(p);
 }
 
-export function modeOf(p: ProviderId, env: Env = process.env): LiveMode {
+export function modeOf(p: ProviderId, env: Env = liveEnv()): LiveMode {
   const v = (env[SPECS[p].modeVar] ?? '').trim().toLowerCase();
   return v === 'sandbox' || v === 'production' ? v : 'off';
 }
 
 /** Reads a variable from the environment, or from the file named by `<NAME>_FILE`. Never logged. */
-export function readVar(name: string, env: Env = process.env): string | null {
+export function readVar(name: string, env: Env = liveEnv()): string | null {
   const direct = env[name];
   if (direct !== undefined && direct.trim() !== '') return direct.trim();
   const file = env[`${name}_FILE`];
@@ -121,7 +150,7 @@ export function readVar(name: string, env: Env = process.env): string | null {
 }
 
 /** Which variables are present or missing for the provider's current mode. Values are never returned. */
-export function envStatus(p: ProviderId, env: Env = process.env) {
+export function envStatus(p: ProviderId, env: Env = liveEnv()) {
   const mode = modeOf(p, env);
   return SPECS[p].vars.map((v) => ({
     name: v.name, secret: v.secret, note: v.note,
@@ -132,12 +161,12 @@ export function envStatus(p: ProviderId, env: Env = process.env) {
   }));
 }
 
-export function missingVars(p: ProviderId, env: Env = process.env): string[] {
+export function missingVars(p: ProviderId, env: Env = liveEnv()): string[] {
   return envStatus(p, env).filter((v) => v.required && !v.present).map((v) => v.name);
 }
 
 /** Resolved base URL: documented default, or a vetted override. Returns an error string instead of a bad URL. */
-export function baseUrl(p: ProviderId, key: string, env: Env = process.env): { url: string | null; error: string | null; overridden: boolean } {
+export function baseUrl(p: ProviderId, key: string, env: Env = liveEnv()): { url: string | null; error: string | null; overridden: boolean } {
   const mode = modeOf(p, env);
   const spec = SPECS[p];
   const ov = spec.overrideVars[key] ? env[spec.overrideVars[key]] : undefined;
@@ -150,7 +179,7 @@ export function baseUrl(p: ProviderId, key: string, env: Env = process.env): { u
 }
 
 /** Deployment-level reasons a provider cannot run (mode, credentials, base URLs). Scope reasons live in gate.ts. */
-export function deploymentReasons(p: ProviderId, env: Env = process.env): string[] {
+export function deploymentReasons(p: ProviderId, env: Env = liveEnv()): string[] {
   const mode = modeOf(p, env);
   if (mode === 'off') return [`${SPECS[p].modeVar} is off (set sandbox or production to enable ${p}).`];
   const reasons: string[] = [];

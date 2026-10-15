@@ -32,8 +32,8 @@ export function LiveConnectorsPanel() {
   };
 
   return (
-    <Panel title="Live connectors (real vendor APIs, gated)">
-      <p className="small muted">Each provider runs only when its mode is set to sandbox or production in the environment, its keys are present, and an authorization is recorded for this client. Production also needs the live gate above (covered service, BAA, onboarding, non-synthetic environment, PHI gate). Keys are never shown here. Smoke tests run from the command line: <span className="mono">npm run smoke:live -- &lt;provider&gt;</span>.</p>
+    <Panel title="Live connectors (real vendor APIs, gated)" actions={<a href="#/connect">Connect providers: enter keys, set modes, test</a>}>
+      <p className="small muted">Each provider runs only when its mode is set to sandbox or production (on the Connect providers page or in the environment), its keys are present, and an authorization is recorded for this client. Production also needs the live gate above (covered service, BAA, onboarding, non-synthetic environment, PHI gate). Keys are never shown here. Smoke tests run from the command line: <span className="mono">npm run smoke:live -- &lt;provider&gt;</span>.</p>
       {err && <div className="callout danger">{err}</div>}
       {!rows ? <p className="muted">Loading…</p> : (
         <div className="table-wrap"><table className="int-table">

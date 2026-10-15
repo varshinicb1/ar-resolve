@@ -33,6 +33,7 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
 export const api = {
   get: <T,>(p: string) => call<T>('GET', p),
   post: <T,>(p: string, b: unknown = {}) => call<T>('POST', p, b),
+  put: <T,>(p: string, b: unknown = {}) => call<T>('PUT', p, b),
 };
 
 export function money(cents: unknown): string {

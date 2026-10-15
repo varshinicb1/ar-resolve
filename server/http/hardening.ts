@@ -59,7 +59,7 @@ export function cors(cfg: Config, req: IncomingMessage, res: ServerResponse): 'p
   }
   if (req.method === 'OPTIONS') {
     if (!allowed) return 'refused';
-    res.setHeader('access-control-allow-methods', 'GET, POST');
+    res.setHeader('access-control-allow-methods', 'GET, POST, PUT');
     res.setHeader('access-control-allow-headers', CORS_HEADERS);
     res.setHeader('access-control-max-age', '600');
     return 'preflight-ok';

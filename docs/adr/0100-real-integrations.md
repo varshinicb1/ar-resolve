@@ -87,3 +87,7 @@ No real external service was called from this environment: no vendor keys exist 
 - `web/src/pages/Integrations.tsx`: mounts the panel and rewords the subtitle.
 - `README.md`: live integrations sentence, command table, test count, setup link.
 - `docs/COMPLETION_MATRIX.md`: INT08 note and the new section.
+
+## Addendum (2026-10-15, ADR 0110)
+
+Keys and modes can now also be entered in the app (Connect providers); the environment still wins. The Stedi API reference was re-read on 2026-10-15: no change to key handling (test vs production keys, `Authorization` header without `Bearer`, same hosts). It now states test keys work for all claims-processing endpoints except real-time claim status, and lists pooled rate and concurrency limits; see ADR 0110 "Stedi documentation re-check".

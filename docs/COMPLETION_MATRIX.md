@@ -218,6 +218,18 @@ Status values: **Implemented** (works and tested on synthetic data), **Mocked** 
 | LIV11 | `npm run smoke:live -- <provider>`: documented test data only, refuses without keys or in production, results recorded | Implemented; PASS for all six with `--mock`; real sandbox runs not done (no keys here) | scripts/smoke-live.ts; tests/live-integrations.test.ts "overview/smoke" |
 | LIV12 | Integrations page: per connector mode, env var presence (names only), authorization, gate reasons, last smoke, revoke | Implemented | web/src/pages/LiveConnectors.tsx |
 | LIV13 | Member ID crosswalk, ERA reconciliation into the outcome ledger, Epic and athenahealth adapters | Blocked | ADR 0100 "Blocked" |
+## Connect providers (ADR 0110, migration 110)
+
+| Area | Requirement | Status | Evidence |
+| --- | --- | --- | --- |
+| CON01 | One page (Integrations > Connect providers) to enter keys, set Off / Sandbox / Production and test each of the six providers | Implemented | web/src/pages/ConnectProviders.tsx; screenshot in the ADR verification |
+| CON02 | Deployment-level storage of declared names only; secrets sealed with AES-256-GCM (phi.ts); append-only change history with last-4 fingerprints | Implemented (mutation-tested) | tests/connector-settings.test.ts "seals the secret", "never appears" |
+| CON03 | Sealing key fails closed outside synthetic; synthetic creates a 0600 per-installation key file | Implemented (mutation-tested) | tests/connector-settings.test.ts "outside synthetic", "insecure local key file" |
+| CON04 | Environment (or `<NAME>_FILE`) always wins over a stored value; stored values reach the gate, adapters and smoke:live | Implemented (mutation-tested) | tests/connector-settings.test.ts "environment beats", "used end to end" |
+| CON05 | `integration_admin` only; writes audited without values; no secret in any response, audit row, log line or error | Implemented (mutation-tested) | tests/connector-settings.test.ts "only integration_admin", "never appears" |
+| CON06 | Production mode refused in synthetic; test refuses production; one test per provider per 10 s | Implemented (mutation-tested) | tests/connector-settings.test.ts |
+| CON07 | Real vendor sandbox test from the page | Blocked (no vendor keys in this environment; verified against the local mock only) | ADR 0110 |
+| CON08 | A deployment-admin role separate from per-client supervisors | Blocked (not built; any supervisor can change deployment keys) | ADR 0110 "Costs" |
 ## Stress, load and resilience (ADR 0095, migration 095)
 
 | Area | Requirement | Status | Evidence |

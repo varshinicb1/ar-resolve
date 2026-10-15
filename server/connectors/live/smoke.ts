@@ -15,7 +15,7 @@
 import type { Db } from '../../db/db.ts';
 import { newId, nowIso } from '../../util.ts';
 import { parseEdi } from '../x12/index.ts';
-import { PROVIDERS, SPECS, isProvider, missingVars, modeOf, readVar, type ProviderId } from './config.ts';
+import { PROVIDERS, SPECS, isProvider, liveEnv, missingVars, modeOf, readVar, type ProviderId } from './config.ts';
 import { STEDI_PATHS } from './stedi.ts';
 import { OPTUM_PATHS } from './optum.ts';
 import { coverageInquiry } from './availity.ts';
@@ -148,7 +148,7 @@ async function slackChecks(): Promise<SmokeCheck[]> {
 const RUNNERS: Record<ProviderId, () => Promise<SmokeCheck[]>> = { stedi: stediChecks, optum: optumChecks, availity: availityChecks, twilio: twilioChecks, postmark: postmarkChecks, slack: slackChecks };
 
 /** Pure refusal logic, exported for tests: production and missing keys always refuse. */
-export function smokeRefusals(p: string, env: Record<string, string | undefined> = process.env): string[] {
+export function smokeRefusals(p: string, env: Record<string, string | undefined> = liveEnv()): string[] {
   if (!isProvider(p)) return [`Unknown provider "${p}". Use one of: ${PROVIDERS.join(', ')}.`];
   const mode = modeOf(p, env);
   if (mode === 'production') return [`${SPECS[p].modeVar}=production: smoke tests run against vendor sandboxes only and never in production mode.`];

@@ -5,8 +5,10 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { ROOT } from './lib/proc.ts';
 
-interface Mutation { name: string; file: string; from: string | RegExp; to: string; test: string }
+interface Mutation { name: string; file: string; from: string | RegExp; to: string; test: string; suite?: string }
 
+const CS = 'tests/connector-settings.test.ts';
+const CSF = 'server/connectors/live/connector-settings.ts';
 const M: Mutation[] = [
   { name: 'destroy the socket on an oversized body', file: 'server/http/app.ts', from: '{ reject(refuseBody(req, MAX_BODY)); return; }\n    let size', to: '{ reject(new AppError(413, "too_large", "x")); req.destroy(); return; }\n    let size', test: 'oversized body' },
   { name: 'decodeURIComponent without a guard', file: 'server/http/app.ts', from: 'try { return decodeURIComponent(v); } catch { throw invalid', to: 'try { return decodeURIComponent(v); } finally { void invalid', test: 'malformed percent-encoding' },
@@ -21,6 +23,17 @@ const M: Mutation[] = [
   { name: 'incremental check skips new rows', file: 'server/services/audit.ts', from: "'SELECT * FROM audit_events WHERE tenant_id = ? AND seq > ? ORDER BY seq', tenantId, cp.seq", to: "'SELECT * FROM audit_events WHERE tenant_id = ? AND seq > ? AND 0 ORDER BY seq', tenantId, cp.seq", test: 'incremental chain check' },
   { name: 'busy_timeout set after journal_mode', file: 'server/db/db.ts', from: "db.exec('PRAGMA busy_timeout = 5000; PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');", to: "db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');", test: 'waits for a lock' },
   { name: 'statement cache unbounded', file: 'server/db/db.ts', from: 'if (cache.size >= STATEMENT_CACHE_MAX)', to: 'if (false)', test: 'prepared statements' },
+  // ADR 0110 Connect providers: each gate re-opened on its own must fail its test.
+  { name: 'stored value beats the environment', file: 'server/connectors/live/config.ts', from: 'if (v === undefined || envProvides(k, base)) continue;', to: 'if (v === undefined) continue;', test: 'environment beats', suite: CS },
+  { name: 'secret stored without a sealing key outside synthetic', file: CSF, from: "if (!store?.synthetic) throw new AppError(409, 'sealing_key_missing'", to: "if (false) throw new AppError(409, 'sealing_key_missing'", test: 'outside synthetic', suite: CS },
+  { name: 'secret stored unsealed', file: CSF, from: 'const stored = s.secret ? seal(s.value, ring!) : s.value;', to: 'const stored = s.value;', test: 'seals the secret', suite: CS },
+  { name: 'production mode allowed in synthetic', file: CSF, from: "if (mode === 'production' && (!store || store.synthetic))", to: "if (false && mode === 'production')", test: 'production mode is refused in synthetic', suite: CS },
+  { name: 'test runs in production mode', file: 'server/connectors/live/smoke.ts', from: "if (mode === 'production') return [", to: 'if (false) return [', test: 'refuses production', suite: CS },
+  { name: 'test not rate limited', file: CSF, from: 'if (wait > 0) throw', to: 'if (false) throw', test: 'rate limited', suite: CS },
+  { name: 'settings without integration_admin', file: CSF, from: "function admin(scope: Scope) { requirePerm(scope, 'integration_admin'); }", to: 'function admin(_scope: Scope) { }', test: 'only integration_admin', suite: CS },
+  { name: 'GET returns the secret instead of its last 4', file: CSF, from: "last4: v.secret && source === 'saved' ? row!.last4 || '' : null,", to: "last4: v.secret && source === 'saved' ? storedValues()[v.name] ?? '' : null,", test: 'synthetic without a sealing key', suite: CS },
+  { name: 'audit row carries the values', file: CSF, from: 'details: { provider: p, changes: done } });', to: 'details: { provider: p, changes: done, values } });', test: '.', suite: CS },
+  { name: 'stored key not used by the adapter', file: 'server/connectors/live/config.ts', from: 'const stored = storedSource ? storedSource() : null;', to: 'const stored = null as Env | null;', test: 'used end to end', suite: CS },
 ];
 
 let failures = 0;
@@ -30,7 +43,7 @@ for (const m of M) {
   if (!orig.includes(m.from as string)) { console.log(`SKIP (pattern not found): ${m.name}`); failures++; continue; }
   writeFileSync(path, orig.replace(m.from, m.to));
   try {
-    const r = spawnSync(process.execPath, ['--disable-warning=ExperimentalWarning', '--test', `--test-name-pattern=${m.test}`, 'tests/stress-fixes.test.ts'], { cwd: ROOT, encoding: 'utf8' });
+    const r = spawnSync(process.execPath, ['--disable-warning=ExperimentalWarning', '--test', `--test-name-pattern=${m.test}`, m.suite ?? 'tests/stress-fixes.test.ts'], { cwd: ROOT, encoding: 'utf8' });
     const caught = r.status !== 0;
     console.log(`${caught ? 'CAUGHT ' : 'MISSED '} ${m.name}  (test: "${m.test}")`);
     if (!caught) failures++;

@@ -4,11 +4,13 @@
 // --mock runs the same checks against the local mock server instead (no keys needed; a rehearsal).
 // Results are recorded in live_smoke_runs of the database at AR_DB (default data/ar-resolve.db) so the
 // Integrations page can show the last result. Exit codes: 0 pass, 1 fail, 2 refused.
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { openDb } from '../server/db/db.ts';
 import { formatReport, runSmoke } from '../server/connectors/live/smoke.ts';
-import { SPECS, isProvider } from '../server/connectors/live/config.ts';
+import { isProvider, liveEnv, modeOf } from '../server/connectors/live/config.ts';
+import { useConnectorSettings } from '../server/connectors/live/connector-settings.ts';
+import { isSyntheticDeployment } from '../server/config.ts';
 import { mockEnv, startLiveMock, type MockOptions } from '../server/connectors/live/mock-server.ts';
 import { setFetchForTests } from '../server/connectors/live/http.ts';
 
@@ -18,8 +20,16 @@ const useMock = args.includes('--mock');
 const record = !args.includes('--no-record');
 
 let close: (() => Promise<void>) | null = null;
+// ADR 0110: values saved on the Connect providers page are read too (the environment still wins).
+const dbPath = process.env.AR_DB ?? 'data/ar-resolve.db';
+let db = null;
+if (record || existsSync(dbPath)) {
+  mkdirSync(dirname(dbPath), { recursive: true });
+  db = openDb(dbPath);
+  useConnectorSettings(db, { synthetic: isSyntheticDeployment(), dbPath });
+}
 // A provider set to production is refused even for a mock rehearsal: the mock never masks production mode.
-const production = isProvider(provider) && (process.env[SPECS[provider].modeVar] ?? '').toLowerCase() === 'production';
+const production = isProvider(provider) && modeOf(provider, liveEnv()) === 'production';
 if (useMock && !production) {
   const opts: MockOptions = { stediKey: 'mock-test-key', optum: { id: 'mock-id', secret: 'mock-secret' }, availity: { id: 'mock-id', secret: 'mock-secret' }, twilio: { sid: 'ACmocktest0000000000', token: 'mock-token' } };
   const m = await startLiveMock(opts);
@@ -31,13 +41,7 @@ if (useMock && !production) {
   close = () => m.close();
 }
 
-let db = null;
-if (record) {
-  const path = process.env.AR_DB ?? 'data/ar-resolve.db';
-  mkdirSync(dirname(path), { recursive: true });
-  db = openDb(path);
-}
-const report = await runSmoke(provider, { db, target: useMock ? 'local_mock' : 'vendor_sandbox', runBy: process.env.USER ? `smoke:live (${process.env.USER})` : 'smoke:live' });
+const report = await runSmoke(provider, { db: record ? db : null, target: useMock ? 'local_mock' : 'vendor_sandbox', runBy: process.env.USER ? `smoke:live (${process.env.USER})` : 'smoke:live' });
 console.log(formatReport(report));
 if (close) await close();
 db?.close();

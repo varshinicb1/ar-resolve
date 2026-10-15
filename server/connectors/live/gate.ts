@@ -14,7 +14,7 @@ import { audit } from '../../services/audit.ts';
 import { requirePerm, type Scope } from '../../services/auth.ts';
 import { getConfig, latestAuthorization, liveGate } from '../framework.ts';
 import { phiModeOn } from '../../services/governance.ts';
-import { type Env, type LiveMode, type ProviderId, SPECS, deploymentReasons, modeOf } from './config.ts';
+import { type Env, type LiveMode, type ProviderId, SPECS, deploymentReasons, liveEnv, modeOf } from './config.ts';
 
 export function revocation(db: Db, scope: Pick<Scope, 'tenantId' | 'clientId'>, connectorId: string, authorizationId: string) {
   return one<{ reason: string; revoked_by: string; revoked_at: string }>(db,
@@ -24,7 +24,7 @@ export function revocation(db: Db, scope: Pick<Scope, 'tenantId' | 'clientId'>, 
 
 export interface GateResult { provider: ProviderId; connectorId: string; mode: LiveMode; open: boolean; reasons: string[] }
 
-export function providerGate(db: Db, scope: Scope, p: ProviderId, env: Env = process.env): GateResult {
+export function providerGate(db: Db, scope: Scope, p: ProviderId, env: Env = liveEnv()): GateResult {
   const spec = SPECS[p];
   const mode = modeOf(p, env);
   const reasons = [...deploymentReasons(p, env)];

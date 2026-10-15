@@ -2,10 +2,24 @@
 
 What a person has to obtain before each real connector can run, and how to check it. Every vendor fact below comes from the vendor's own documentation, retrieved on 2026-10-14; the URL is next to each fact. Anything we could not confirm says **NOT FOUND** or **unverified**. Costs appear only where the vendor states them.
 
+## Enter keys in the app (ADR 0110)
+
+The simplest path: sign in as a supervisor, open **Integrations > Connect providers** (`#/connect`), and for each provider:
+
+1. click **Where to get this** to open the vendor's signup or key page, create a sandbox/test key;
+2. paste the values and press **Save** (secrets are sealed before they are stored and never shown again; the page shows only "Saved, ends in 4f2a, by Sam on 15 Oct");
+3. choose **Sandbox**;
+4. press **Record an authorization** (reference and reason) for the client you are working in;
+5. press **Test sandbox**: it runs the same checks as `npm run smoke:live` against the vendor sandbox and shows pass/fail lines.
+
+Rules: an environment variable (or `<NAME>_FILE`) always wins and the field shows "Set in environment"; Production cannot be chosen in a synthetic deployment, and in a real one the production gate below still applies; a test never runs in production mode and runs at most once per provider every 10 seconds. Outside `AR_ENV=synthetic`, secrets are stored only when `AR_PHI_KEYS` + `AR_PHI_ACTIVE_KEY_ID` (or `AR_PHI_KEY`) is set; in synthetic, a per-installation key file is created next to the database (mode 0600; override with `AR_CONNECTOR_KEY_FILE`). Company sign-in (OIDC) is read at startup and stays in the environment; the page shows which `AR_OIDC_*` settings are present. Keys saved here are deployment-wide, not per client.
+
+The environment variables below remain the alternative (containers, secrets managers).
+
 All providers are **off** by default. A provider runs only when all of these hold (see `server/connectors/live/gate.ts`):
 
-1. its mode variable is `sandbox` or `production`;
-2. its keys are present (env var, or `<NAME>_FILE` pointing at a secrets file);
+1. its mode is `sandbox` or `production` (mode variable, or set on the Connect providers page);
+2. its keys are present (env var, `<NAME>_FILE` pointing at a secrets file, or saved on the Connect providers page);
 3. a customer authorization is recorded for the tenant/client (`POST /api/integrations/connectors/:id/authorization`) and has not been revoked;
 4. production only: the existing live gate (covered-service verification, BAA reference, onboarding, non-synthetic environment, BAA register), `AR_PHI_MODE=on`, and the connector switched to live for that client.
 

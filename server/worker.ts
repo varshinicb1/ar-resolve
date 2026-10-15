@@ -13,6 +13,7 @@ import { governanceTick } from './services/governance-worker.ts';
 import { ConfigError, loadConfig, type Config } from './config.ts';
 import { createLogger, setLogger } from './log.ts';
 import { backupLoop, createLoop, installShutdown, seedFor, sessionPurgeLoop } from './runtime.ts';
+import { useConnectorSettings } from './connectors/live/connector-settings.ts';
 
 let cfg: Config;
 try { cfg = loadConfig(); } catch (e) {
@@ -27,6 +28,7 @@ if (phiProblems.length) { logger.error('startup_refused', { problems: phiProblem
 
 const db = openDb(cfg.dbPath);
 seedFor(db, cfg);
+useConnectorSettings(db, { synthetic: cfg.synthetic, dbPath: cfg.dbPath }); // ADR 0110: keys saved in the app
 const once = process.argv.includes('--once');
 recoverCalls(db);
 const run = async () => {

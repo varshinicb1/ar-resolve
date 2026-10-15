@@ -270,7 +270,7 @@ export function createApp(db: Db, opts: { staticDir?: string; config?: Config; l
       const match = routes.map((r) => ({ r, m: req.method === r.method ? url.pathname.match(r.pattern) : null })).find((x) => x.m);
       if (!match) throw notFound('Route');
       routeLabel = match.r.path;
-      const raw = req.method === 'POST' ? await readBody(req, cfg.http.bodyLimitBytes) : '';
+      const raw = req.method === 'POST' || req.method === 'PUT' ? await readBody(req, cfg.http.bodyLimitBytes) : '';
       let body: unknown = null;
       const form = /^application\/x-www-form-urlencoded/i.test(String(req.headers['content-type'] ?? ''));
       if (raw && form) body = Object.fromEntries(new URLSearchParams(raw));
