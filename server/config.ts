@@ -66,6 +66,8 @@ export interface Config {
   http: { bodyLimitBytes: number; requestTimeoutMs: number; handlerTimeoutMs: number; hsts: boolean };
   rateLimit: { ipPerMinute: number; keyPerMinute: number };
   metricsToken: string | null;
+  /** User ids allowed to read or change deployment-wide provider keys outside synthetic (ADR 0110). */
+  deploymentAdmins: string[];
   backup: { dir: string | null; intervalMinutes: number; keep: number; encrypt: boolean };
   shutdownGraceMs: number;
   workerIntervals: { outboxMs: number; notifyMs: number; governanceMs: number };
@@ -165,6 +167,8 @@ export function loadConfig(env: Env = process.env): Config {
   const metricsToken = (env.AR_METRICS_TOKEN ?? '').trim() || null;
   if (strict && (!metricsToken || metricsToken.length < 24)) problems.push('AR_METRICS_TOKEN is required (at least 24 characters); /metrics is never open outside synthetic');
 
+  const deploymentAdmins = (env.AR_DEPLOYMENT_ADMINS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+
   const backupDir = (env.AR_BACKUP_DIR ?? '').trim() || null;
   if (strict && !backupDir) problems.push('AR_BACKUP_DIR is required (absolute path, ideally a separate volume)');
   else if (strict && backupDir && !isAbsolute(backupDir)) problems.push('AR_BACKUP_DIR must be an absolute path');
@@ -196,6 +200,7 @@ export function loadConfig(env: Env = process.env): Config {
       keyPerMinute: int(env, 'AR_RATE_LIMIT_KEY_PER_MIN', strict ? 600 : 0, 0, 1_000_000, problems),
     },
     metricsToken,
+    deploymentAdmins,
     backup: { dir: backupDir, intervalMinutes: int(env, 'AR_BACKUP_INTERVAL_MINUTES', strict ? 60 : 0, 0, 10_080, problems), keep: int(env, 'AR_BACKUP_KEEP', 48, 1, 10_000, problems), encrypt: encryptRaw === 'on' },
     shutdownGraceMs: int(env, 'AR_SHUTDOWN_GRACE_MS', 15_000, 0, 120_000, problems),
     // Pre-existing worker settings, now read here too (same names and defaults as before).

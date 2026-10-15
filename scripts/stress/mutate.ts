@@ -33,6 +33,7 @@ const M: Mutation[] = [
   { name: 'settings without integration_admin', file: CSF, from: "function admin(scope: Scope) { requirePerm(scope, 'integration_admin'); }", to: 'function admin(_scope: Scope) { }', test: 'only integration_admin', suite: CS },
   { name: 'GET returns the secret instead of its last 4', file: CSF, from: "last4: v.secret && source === 'saved' ? row!.last4 || '' : null,", to: "last4: v.secret && source === 'saved' ? storedValues()[v.name] ?? '' : null,", test: 'synthetic without a sealing key', suite: CS },
   { name: 'audit row carries the values', file: CSF, from: 'details: { provider: p, changes: done } });', to: 'details: { provider: p, changes: done, values } });', test: '.', suite: CS },
+  { name: 'any client supervisor edits deployment keys', file: 'server/http/routes/connector-settings.ts', from: 'if (!opts.deploymentAdmins.includes(s.userId)) {', to: 'if (false) {', test: 'AR_DEPLOYMENT_ADMINS may touch', suite: CS },
   { name: 'stored key not used by the adapter', file: 'server/connectors/live/config.ts', from: 'const stored = storedSource ? storedSource() : null;', to: 'const stored = null as Env | null;', test: 'used end to end', suite: CS },
 ];
 

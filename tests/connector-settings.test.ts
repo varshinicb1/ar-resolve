@@ -244,7 +244,7 @@ test('connect: an insecure local key file is refused', async () => {
 test('connect: outside synthetic, no sealing key refuses a secret; a keyring from the environment seals it', async () => {
   const sdb = openDb(':memory:');
   seed(sdb);
-  const cfg = { ...loadConfig(), env: 'staging' as const, synthetic: false };
+  const cfg = { ...loadConfig(), env: 'staging' as const, synthetic: false, deploymentAdmins: ['u_sam'] };
   const s2 = createApp(sdb, { config: cfg, logger: createLogger({ level: 'debug', sink: (line) => logs.push(line) }) });
   await new Promise<void>((r) => s2.listen(0, r));
   const sam = await client(`http://127.0.0.1:${(s2.address() as AddressInfo).port}`, createSession(sdb, 'u_sam'));
@@ -306,4 +306,16 @@ test('connect: the secret never appears in any response, audit row, history, smo
   assert.ok(audits.some((a) => a.event_type === 'connector_mode_changed'));
   assert.ok(audits.some((a) => a.event_type === 'connector_test_run'));
   for (const a of audits) assert.ok(!a.details.includes('4f2a'), 'audit rows carry names and actions only, not even the last 4');
+});
+
+test('outside synthetic, only AR_DEPLOYMENT_ADMINS may touch deployment-wide keys', async () => {
+  const { requireDeploymentAdmin } = await import('../server/http/routes/connector-settings.ts');
+  const sup = { userId: 'u-sup', displayName: 'Sup', tenantId: 't', clientId: 'c', roles: ['supervisor' as const] };
+  // Synthetic keeps the per-client permission only.
+  assert.equal(requireDeploymentAdmin(sup, { synthetic: true, deploymentAdmins: [] }), sup);
+  // Outside synthetic an empty allowlist locks everyone out (fail closed).
+  assert.throws(() => requireDeploymentAdmin(sup, { synthetic: false, deploymentAdmins: [] }), /AR_DEPLOYMENT_ADMINS/);
+  // A supervisor of some client who is not named is refused; a named one passes.
+  assert.throws(() => requireDeploymentAdmin(sup, { synthetic: false, deploymentAdmins: ['u-other'] }), /AR_DEPLOYMENT_ADMINS/);
+  assert.equal(requireDeploymentAdmin(sup, { synthetic: false, deploymentAdmins: ['u-sup'] }), sup);
 });

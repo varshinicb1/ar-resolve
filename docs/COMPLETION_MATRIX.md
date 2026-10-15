@@ -229,7 +229,7 @@ Status values: **Implemented** (works and tested on synthetic data), **Mocked** 
 | CON05 | `integration_admin` only; writes audited without values; no secret in any response, audit row, log line or error | Implemented (mutation-tested) | tests/connector-settings.test.ts "only integration_admin", "never appears" |
 | CON06 | Production mode refused in synthetic; test refuses production; one test per provider per 10 s | Implemented (mutation-tested) | tests/connector-settings.test.ts |
 | CON07 | Real vendor sandbox test from the page | Blocked (no vendor keys in this environment; verified against the local mock only) | ADR 0110 |
-| CON08 | A deployment-admin role separate from per-client supervisors | Blocked (not built; any supervisor can change deployment keys) | ADR 0110 "Costs" |
+| CON08 | Only named deployment admins may change deployment-wide keys outside synthetic | Implemented (`AR_DEPLOYMENT_ADMINS` allowlist, fail closed when empty; no in-app management) | ADR 0110 "Costs"; tests/connector-settings.test.ts |
 ## Stress, load and resilience (ADR 0095, migration 095)
 
 | Area | Requirement | Status | Evidence |

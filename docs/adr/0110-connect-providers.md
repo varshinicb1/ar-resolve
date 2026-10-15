@@ -27,7 +27,7 @@ The owner asked for one page where all provider API keys can be entered and each
 
 ## Costs
 
-- **Any supervisor of any client can change deployment-wide keys.** `integration_admin` is a per-client role, and there is no deployment-admin role yet. Acceptable for a single-customer pilot. It is recorded as blocked item CON08.
+- **Deployment admins are an environment allowlist, not a role.** `integration_admin` is per client, but provider keys are deployment-wide. Outside synthetic the connect routes also require the user id to be in `AR_DEPLOYMENT_ADMINS`; an empty list locks the page (403 naming the variable) instead of letting any client's supervisor change every client's keys. Changing who is an admin needs a redeploy. In synthetic the per-client permission alone applies. Mutation-tested (`any client supervisor edits deployment keys`). CON08.
 - A secret now lives in the database, sealed, as well as possibly in the environment. Backups carry it, sealed (backup encryption is required outside synthetic). Rotating the PHI keyring needs the stored secrets re-entered or re-sealed: `phi-keys.ts` re-encryption does not cover this table.
 - The synthetic key file sits next to the database. Anyone who copies both can open the secrets. That is acceptable only for synthetic test keys, which is why it is refused elsewhere.
 - The 5 s cache means a second process can use an old key for up to 5 s after a change.
@@ -78,7 +78,7 @@ The page does not mention sandbox accounts. The "free sandbox account" statement
 ## Blocked or unverified
 
 - No real vendor sandbox was called. There are no vendor keys in this environment, so the first real "Test sandbox" per provider is still owed.
-- There is no deployment-admin role (CON08).
+- Deployment admins are an env allowlist (CON08); there is no in-app way to manage them.
 - PHI keyring rotation does not re-seal `connector_settings`.
 
 ## Shared core files touched (small edits)

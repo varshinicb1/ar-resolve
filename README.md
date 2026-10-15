@@ -18,7 +18,7 @@ Development with hot reload: `npm run dev` (API on 8080, UI on http://localhost:
 
 | Command | What it does |
 | --- | --- |
-| `npm test` | 204 tests in 25 suites over the real HTTP API (see below) |
+| `npm test` | 205 tests in 25 suites over the real HTTP API (see below) |
 | `npm run smoke:live -- <provider>` | Calls a vendor sandbox with documented test data only; refuses without keys or in production mode (`--mock` rehearses against a local mock) |
 | `npm run demo` | The Phase 0 acceptance journey end to end through the API, including a restart |
 | `npm run eval` | Regenerates `evaluation/REPORT.md`: DED01 40/40, all packs 141/141, selection 17/17, 3-client cohort 35/35 |
