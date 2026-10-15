@@ -1,0 +1,52 @@
+# Single-node pilot (ADR 0090, docs/OPERATIONS.md): API + separate worker sharing one SQLite
+# database on a persistent volume, backups on a second volume. Put a TLS-terminating reverse proxy
+# in front of port 8080 (it is bound to localhost here) and set AR_TRUST_PROXY_HOPS=1.
+#
+#   cp .env.example .env   # fill in every value marked required for staging/production
+#   docker compose up -d --build
+#   docker compose exec app node scripts/admin.ts list
+services:
+  app:
+    build: .
+    image: ar-resolve:pilot
+    env_file: .env
+    environment:
+      AR_WORKER: "off"          # the worker runs in its own container
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ar-data:/data
+      - ar-backups:/backups
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+  worker:
+    image: ar-resolve:pilot
+    command: ["node", "--disable-warning=ExperimentalWarning", "server/worker.ts"]
+    env_file: .env
+    volumes:
+      - ar-data:/data
+      - ar-backups:/backups
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m          # backup staging happens in AR_BACKUP_DIR, SQLite temp files here
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      app:
+        condition: service_healthy   # the API applies migrations first
+    healthcheck:
+      disable: true             # no HTTP listener; watch its logs and ar_backup_last_success_timestamp_seconds
+    stop_grace_period: 60s
+    restart: unless-stopped
+
+volumes:
+  ar-data:
+  ar-backups:

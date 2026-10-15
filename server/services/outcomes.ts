@@ -298,9 +298,11 @@ export type RemittanceResult = { lineNumber: number; claimReference: string; sta
 
 // Validates and reconciles a remittance batch. Callers check permissions and own the transaction
 // (the JSON import route above, and EDI 835 ingestion in server/connectors/remit-835.ts).
-export function reconcileRemittance(db: Db, scope: Scope, input: Partial<RemittanceInput>): { batchId: string; results: RemittanceResult[] } {
+// maxLines: the JSON route keeps its 500-line batch limit; an ingested 835 is already bounded by the
+// EDI size limit and may carry thousands of service lines (ADR 0095).
+export function reconcileRemittance(db: Db, scope: Scope, input: Partial<RemittanceInput>, maxLines = 500): { batchId: string; results: RemittanceResult[] } {
   if (input.format !== 'ar-resolve.synthetic-remittance.v1' && input.format !== 'ar-resolve.remittance-lines.v1') throw invalid('Unknown remittance format');
-  if (!Array.isArray(input.lines) || !input.lines.length || input.lines.length > 500) throw invalid('lines must contain 1-500 remittance lines');
+  if (!Array.isArray(input.lines) || !input.lines.length || input.lines.length > maxLines) throw invalid(`lines must contain 1-${maxLines} remittance lines`);
   const errors = input.lines.flatMap((l, i) => validLine(l, i));
   if (errors.length) throw invalid('Remittance file rejected; nothing was imported', errors);
   const sourceName = String(input.sourceName ?? 'remittance.json').slice(0, 120);

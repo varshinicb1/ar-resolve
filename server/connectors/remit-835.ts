@@ -60,6 +60,10 @@ export function claimToLines(c: ClaimPayment, payerId: string, adjudicatedDate: 
 interface Remit835Meta { control: string; payer: { name: string; id: string }; productionDate: string | null }
 type RemitRecord = { remittance: Remit835Meta; claim: ClaimPayment };
 
+// An 835 that passed the EDI size limit (ingest.ts) is reconciled whole, however many claims it
+// carries (ADR 0095: >500 service lines previewed fine and then failed ingest with a 400).
+export const MAX_835_LINES = 50_000;
+
 // Reconciles the 835 items of a preview. Runs inside the caller's transaction.
 export function reconcile835(db: Db, scope: Scope, items: PreviewItem[], envelopeSender: string, paymentDates: Record<string, string | null>, sourceName: string): Remit835Report {
   const report: Remit835Report = { mapping: REMIT_835_MAPPING, payerKey: null, payerId: null, batchId: null, lines: 0, results: [], skipped: [], reconciledAccounts: [], reopened: [], resolved: [] };
@@ -68,6 +72,8 @@ export function reconcile835(db: Db, scope: Scope, items: PreviewItem[], envelop
   const crosswalk = payerCrosswalk(db, scope);
   const lines: RemittanceLine[] = [];
   const expected = new Map<string, Set<string>>();
+  // Claim ids reversed in this file, computed once (ADR 0095: a per-item scan was O(n^2) on large 835s).
+  const reversedClaims = new Set(remitItems.map((o) => (o.record as RemitRecord).claim).filter((c) => c.reversal).map((c) => c.claimId));
   for (const it of remitItems) {
     const rec = it.record as RemitRecord;
     const c = rec.claim;
@@ -84,7 +90,7 @@ export function reconcile835(db: Db, scope: Scope, items: PreviewItem[], envelop
     if (acct?.payer_id !== payerId) { skip('payer_mismatch', `Account payer ${acct?.payer_id ?? 'unknown'} differs from remittance payer ${payerId}`); continue; }
     const date = rec.remittance.productionDate ?? paymentDates[rec.remittance.control] ?? null;
     if (!date) { skip('no_adjudication_date', 'Neither DTM*405 production date nor BPR16 payment date is present'); continue; }
-    const followsReversal = !c.reversal && remitItems.some((o) => o !== it && (o.record as RemitRecord).claim.reversal && (o.record as RemitRecord).claim.claimId === c.claimId);
+    const followsReversal = !c.reversal && reversedClaims.has(c.claimId);
     const status: RemittanceLine['status'] = c.reversal ? 'reversal' : followsReversal ? 'corrected' : 'original';
     const mapped = claimToLines(c, payerId, date, status);
     if (mapped.problems.length) { skip('unmappable', mapped.problems.join('; ')); continue; }
@@ -93,7 +99,7 @@ export function reconcile835(db: Db, scope: Scope, items: PreviewItem[], envelop
   }
   report.lines = lines.length;
   if (!lines.length) return report;
-  const r = reconcileRemittance(db, scope, { format: 'ar-resolve.remittance-lines.v1', sourceName, lines });
+  const r = reconcileRemittance(db, scope, { format: 'ar-resolve.remittance-lines.v1', sourceName, lines }, MAX_835_LINES);
   report.batchId = r.batchId;
   report.results = r.results;
   for (const x of r.results) {

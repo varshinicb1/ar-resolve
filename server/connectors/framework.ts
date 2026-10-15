@@ -11,6 +11,7 @@ import { audit } from '../services/audit.ts';
 import type { Scope } from '../services/auth.ts';
 import { LiveExecutionDisabled } from './executors.ts';
 import { phiLiveReasons } from '../services/governance.ts';
+import { isSyntheticDeployment } from '../config.ts';
 
 export const ENVIRONMENT_FOR_GATE = (process.env.AR_ENVIRONMENT ?? 'synthetic') as 'synthetic' | 'shadow' | 'assisted_live';
 
@@ -26,7 +27,7 @@ export interface ConnectorDescriptor {
   id: string;
   displayName: string;
   vendor: string;
-  kind: 'edi_file' | 'clearinghouse' | 'fhir' | 'ehr_api' | 'pm_api' | 'sftp' | 'voice';
+  kind: 'edi_file' | 'clearinghouse' | 'fhir' | 'ehr_api' | 'pm_api' | 'sftp' | 'voice' | 'notification';
   defaultMode: Mode;
   liveCapable: boolean;
   capabilities: ActionClass[];
@@ -88,6 +89,9 @@ export interface ConnectorAdapter {
   executeAsync?(ctx: AdapterContext, req: ConnectorRequest): Promise<AdapterResult>;
   // Health stub for adapters that cannot be probed (live disabled).
   healthStub?(): { status: string; detail: string };
+  // Real live adapters (ADR 0100) declare their own gate: every reason it returns refuses the call.
+  // When present it replaces the disabled_live/live-mode branch and the per-scope enabled flag below.
+  gate?(db: Db, scope: Scope, config: ConnectorConfig): string[];
 }
 
 const REGISTRY = new Map<string, ConnectorAdapter>();
@@ -126,7 +130,7 @@ export function getConfig(db: Db, scope: Scope, connectorId: string): ConnectorC
   const a = adapterFor(connectorId);
   const row = one<ConfigRow>(db, 'SELECT * FROM connector_configs WHERE tenant_id=? AND client_id=? AND connector_id=?', scope.tenantId, scope.clientId, connectorId);
   if (row) return toConfig(row);
-  return { connectorId, mode: a.descriptor.defaultMode, enabled: a.descriptor.defaultMode !== 'disabled_live', settings: structuredClone(DEFAULT_SETTINGS[connectorId] ?? {}),
+  return { connectorId, mode: a.descriptor.defaultMode, enabled: a.descriptor.defaultMode !== 'disabled_live' && (a.descriptor.defaultMode !== 'simulated' || isSyntheticDeployment()), settings: structuredClone(DEFAULT_SETTINGS[connectorId] ?? {}),
     mappingId: null, mappingVersion: null, updatedBy: 'system', updatedAt: '' };
 }
 
@@ -333,12 +337,16 @@ function precheck(db: Db, scope: Scope, connectorId: string, req: ConnectorReque
   const refuse = (error: string) => ({ refused: recordEvent(db, scope, connectorId, req, { outcome: 'refused', externalRefs: {}, evidenceLocator: null, sourceTime: null, receivedTime: nowIso(), rawSha256: null, normalized: null, latencyMs: 0, error }) });
   if (req.scope.tenantId !== scope.tenantId || req.scope.clientId !== scope.clientId) throw new AppError(403, 'scope_mismatch', 'Connector request scope does not match the caller');
   if (!a.descriptor.capabilities.includes(req.actionClass)) return refuse(`Action class ${req.actionClass} is not supported by ${connectorId}`);
-  if (config.mode === 'disabled_live' || (config.mode === 'live' && liveGate(db, scope, connectorId).length)) {
+  if (a.gate) {
+    const reasons = a.gate(db, scope, config); // ADR 0100
+    if (reasons.length) return refuse(`LiveExecutionDisabled: ${reasons.join(' ')}`);
+  } else if (config.mode === 'disabled_live' || (config.mode === 'live' && liveGate(db, scope, connectorId).length)) {
     // Live adapters still run their execute() so they can throw LiveExecutionDisabled themselves.
     try { a.execute({ db, scope, config }, req); } catch (err) { if (err instanceof LiveExecutionDisabled) return refuse(`LiveExecutionDisabled: ${err.message}`); throw err; }
     return refuse('Live mode is not enabled for this connector');
   }
-  if (!config.enabled) return refuse('Connector is disabled for this client');
+  if (config.mode === 'simulated' && !isSyntheticDeployment()) return refuse('Simulators do not run outside the synthetic environment (ADR 0090)');
+  if (!config.enabled && !a.gate) return refuse('Connector is disabled for this client');
   const c = circuit(db, scope, connectorId);
   if (c.state === 'open') {
     const age = now().getTime() - Date.parse(c.opened_at ?? nowIso());

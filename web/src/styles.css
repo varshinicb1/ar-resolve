@@ -197,3 +197,28 @@ tr.call-attention td { background: var(--danger-bg); }
 .gov-form label { display: block; font-size: 13px; }
 .gov-form input, .gov-form select { width: 100%; max-width: 100%; box-sizing: border-box; margin-top: 4px; }
 .gov-wrap { overflow-wrap: anywhere; max-width: 320px; }
+
+/* ADR 0110: Connect providers page */
+.cp-page { gap: 16px; }
+.cp-page .panel + .panel { margin-top: 0; }
+.cp-sub { font-weight: 400; margin-left: 6px; }
+.cp-k { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 6px; }
+.cp-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+.cp-modes { margin-bottom: 4px; }
+.cp-modes button[aria-pressed='true']:disabled { opacity: 1; cursor: default; }
+.cp-status { margin-top: 6px; }
+.cp-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.cp-field input { width: 100%; }
+.cp-state { display: flex; gap: 8px; align-items: baseline; margin-top: 4px; flex-wrap: wrap; }
+.cp-missing { color: var(--review); font-weight: 500; }
+.cp-env { font-size: 11px; margin-top: 2px; }
+.cp-actions { margin-top: 16px; }
+.cp-auth { margin: 0 0 16px; padding: 12px; background: var(--canvas); border-radius: var(--radius); align-items: end; }
+.cp-check { display: flex; gap: 8px; align-items: center; }
+.cp-check input { width: auto; min-height: 0; margin: 0; }
+.cp-result { margin-top: 12px; }
+.cp-lines { margin: 8px 0 0; padding: 10px 12px; background: var(--canvas); border: 1px solid var(--border); border-radius: var(--radius); white-space: pre-wrap; overflow-wrap: anywhere; }
+.cp-oidc-note { margin-bottom: 8px; }
+.cp-oidc { border-collapse: collapse; font-size: 14px; }
+.cp-oidc td { padding: 6px 16px 6px 0; border-top: 1px solid var(--border); vertical-align: top; }
+.cp-oidc .mono { font-size: 11px; }

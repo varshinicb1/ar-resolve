@@ -1,0 +1,224 @@
+{
+ "source": "Stedi Healthcare OpenAPI spec (official; linked from https://www.stedi.com/docs/healthcare/api-reference/get-healthcare-reports-835): https://raw.githubusercontent.com/Stedi/openApi/main/healthcare.json",
+ "retrievedAt": "2026-10-14",
+ "info": "Documented example copied verbatim from the spec; the example name is in \"example\".",
+ "example": "ClaimStatusRawX12.resp200.ClaimStatusRawX12_example2",
+ "value": {
+  "claims": [
+   {
+    "claimStatus": {
+     "amountPaid": "0",
+     "checkIssueDate": "2025-08-14",
+     "checkNumber": "123456789",
+     "claimServiceDate": "20250805",
+     "effectiveDate": "2025-09-12",
+     "paidDate": "2025-08-09",
+     "patientAccountNumber": "123456789",
+     "statusCategoryCode": "F2",
+     "statusCategoryCodeValue": "Finalized/Denial - The claim/line has been denied.",
+     "statusCode": "585",
+     "statusCodeValue": "Denied Charge or Non-covered Charge.",
+     "submittedAmount": "1101",
+     "trackingNumber": "123456789",
+     "tradingPartnerClaimNumber": "123456789"
+    },
+    "serviceDetails": [
+     {
+      "service": {
+       "amountPaid": "0",
+       "procedureId": "D1120",
+       "serviceIdQualifier": "American Dental Association Codes",
+       "serviceIdQualifierCode": "AD",
+       "submittedAmount": "141",
+       "submittedUnits": "1"
+      },
+      "status": [
+       {
+        "effectiveDate": "2025-09-12",
+        "statusCategoryCode": "F2",
+        "statusCategoryCodeValue": "Finalized/Denial - The claim/line has been denied.",
+        "statusCode": "585",
+        "statusCodeValue": "Denied Charge or Non-covered Charge."
+       }
+      ]
+     },
+     {
+      "service": {
+       "amountPaid": "0",
+       "procedureId": "D0801",
+       "serviceIdQualifier": "American Dental Association Codes",
+       "serviceIdQualifierCode": "AD",
+       "submittedAmount": "274",
+       "submittedUnits": "1"
+      },
+      "status": [
+       {
+        "effectiveDate": "2025-09-12",
+        "statusCategoryCode": "F2",
+        "statusCategoryCodeValue": "Finalized/Denial - The claim/line has been denied.",
+        "statusCode": "585",
+        "statusCodeValue": "Denied Charge or Non-covered Charge."
+       }
+      ]
+     },
+     {
+      "service": {
+       "amountPaid": "0",
+       "procedureId": "D0603",
+       "serviceIdQualifier": "American Dental Association Codes",
+       "serviceIdQualifierCode": "AD",
+       "submittedAmount": "161",
+       "submittedUnits": "1"
+      },
+      "status": [
+       {
+        "effectiveDate": "2025-09-12",
+        "statusCategoryCode": "F2",
+        "statusCategoryCodeValue": "Finalized/Denial - The claim/line has been denied.",
+        "statusCode": "585",
+        "statusCodeValue": "Denied Charge or Non-covered Charge."
+       }
+      ]
+     },
+     {
+      "service": {
+       "amountPaid": "0",
+       "procedureId": "D0603",
+       "serviceIdQualifier": "American Dental Association Codes",
+       "serviceIdQualifierCode": "AD",
+       "submittedAmount": "161",
+       "submittedUnits": "1"
+      },
+      "status": [
+       {
+        "effectiveDate": "2025-09-12",
+        "statusCategoryCode": "F2",
+        "statusCategoryCodeValue": "Finalized/Denial - The claim/line has been denied.",
+        "statusCode": "585",
+        "statusCodeValue": "Denied Charge or Non-covered Charge."
+       }
+      ]
+     },
+     {
+      "service": {
+       "amountPaid": "0",
+       "procedureId": "D0603",
+       "serviceIdQualifier": "American Dental Association Codes",
+       "serviceIdQualifierCode": "AD",
+       "submittedAmount": "161",
+       "submittedUnits": "1"
+      },
+      "status": [
+       {
+        "effectiveDate": "2025-09-12",
+        "statusCategoryCode": "F2",
+        "statusCategoryCodeValue": "Finalized/Denial - The claim/line has been denied.",
+        "statusCode": "585",
+        "statusCodeValue": "Denied Charge or Non-covered Charge."
+       }
+      ]
+     },
+     {
+      "service": {
+       "amountPaid": "0",
+       "procedureId": "D0603",
+       "serviceIdQualifier": "American Dental Association Codes",
+       "serviceIdQualifierCode": "AD",
+       "submittedAmount": "161",
+       "submittedUnits": "1"
+      },
+      "status": [
+       {
+        "effectiveDate": "2025-09-12",
+        "statusCategoryCode": "F2",
+        "statusCategoryCodeValue": "Finalized/Denial - The claim/line has been denied.",
+        "statusCode": "585",
+        "statusCodeValue": "Denied Charge or Non-covered Charge."
+       }
+      ]
+     },
+     {
+      "service": {
+       "amountPaid": "0",
+       "procedureId": "D0350",
+       "serviceIdQualifier": "American Dental Association Codes",
+       "serviceIdQualifierCode": "AD",
+       "submittedAmount": "145",
+       "submittedUnits": "1"
+      },
+      "status": [
+       {
+        "effectiveDate": "2025-09-12",
+        "statusCategoryCode": "F2",
+        "statusCategoryCodeValue": "Finalized/Denial - The claim/line has been denied.",
+        "statusCode": "585",
+        "statusCodeValue": "Denied Charge or Non-covered Charge."
+       }
+      ]
+     },
+     {
+      "service": {
+       "amountPaid": "0",
+       "procedureId": "D0350",
+       "serviceIdQualifier": "American Dental Association Codes",
+       "serviceIdQualifierCode": "AD",
+       "submittedAmount": "145",
+       "submittedUnits": "1"
+      },
+      "status": [
+       {
+        "effectiveDate": "2025-09-12",
+        "statusCategoryCode": "F2",
+        "statusCategoryCodeValue": "Finalized/Denial - The claim/line has been denied.",
+        "statusCode": "585",
+        "statusCodeValue": "Denied Charge or Non-covered Charge."
+       }
+      ]
+     },
+     {
+      "service": {
+       "amountPaid": "0",
+       "procedureId": "D0330",
+       "serviceIdQualifier": "American Dental Association Codes",
+       "serviceIdQualifierCode": "AD",
+       "submittedAmount": "235",
+       "submittedUnits": "1"
+      },
+      "status": [
+       {
+        "effectiveDate": "2025-09-12",
+        "statusCategoryCode": "F2",
+        "statusCategoryCodeValue": "Finalized/Denial - The claim/line has been denied.",
+        "statusCode": "585",
+        "statusCodeValue": "Denied Charge or Non-covered Charge."
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "controlNumber": "123456789",
+  "dependent": {
+   "firstName": "JORDAN",
+   "lastName": "DOE"
+  },
+  "payer": {
+   "organizationName": "AETNA",
+   "payerIdentification": "60054"
+  },
+  "providers": [
+   {
+    "npi": "1999999984",
+    "organizationName": "Provider Name",
+    "providerType": "BillingProvider"
+   }
+  ],
+  "subscriber": {
+   "firstName": "JANE",
+   "lastName": "DOE",
+   "memberId": "AETNA12345"
+  },
+  "tradingPartnerServiceId": "60054",
+  "x12": "ISA*00*          *00*          *ZZ*RECEIVER       *ZZ*SENDER         *250911*1726*^*00501*123456789*0*T*:~GS*HN*RECEIVERGS*SENDERGS*20250911*1226*123456789*X*005010X212~ST*277*123456789*005010X212~BHT*0010*08*1234567890*20250911*13263006*DG~HL*1**20*1~NM1*PR*2*AETNA*****PI*60054~PER*IC*Aetna*TE*1234567890~HL*2*1*21*1~NM1*41*2*PROVIDER NAME*****46*1234567890~HL*3*2*19*1~NM1*1P*2*PROVIDER NAME*****XX*1999999984~HL*4*3*22*1~NM1*IL*1*DOE*JANE****MI*AETNA12345~HL*5*4*23~NM1*QC*1*DOE*JORDAN~TRN*2*123456789~STC*F2:585*20250911**1101*0*20250809**20250814*123456789*F2:107~REF*1K*123456789~REF*EJ*123456789~DTP*472*D8*20250805~SVC*AD:D1120*141*0****1~STC*F2:585*20250911~DTP*472*D8*20250805~SVC*AD:D0801*274*0****1~STC*F2:585*20250911~DTP*472*D8*20250805~SVC*AD:D0603*161*0****1~STC*F2:107*20250911********F2:735~DTP*472*D8*20250805~SVC*AD:D0350*145*0****1~STC*F2:585*20250911~DTP*472*D8*20250805~SVC*AD:D0350*145*0****1~STC*F2:585*20250911~DTP*472*D8*20250805~SE*34*123456789~GE*1*123456789~IEA*1*123456789~"
+ }
+}

@@ -3,6 +3,7 @@ import { registerAdapter } from './framework.ts';
 import './sim-clearinghouse.ts';
 import './fhir/service.ts';
 import './live-adapters.ts';
+import './live/index.ts'; // ADR 0100: real, gated adapters replace the disabled stubs
 import './webhooks.ts';
 
 registerAdapter({

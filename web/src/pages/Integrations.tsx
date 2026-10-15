@@ -3,6 +3,7 @@ import { api, errorText, when } from '../api.ts';
 import { Heading, Panel, toast } from '../ui.tsx';
 import { go } from '../App.tsx';
 import { GovernancePanels } from './Governance.tsx';
+import { LiveConnectorsPanel } from './LiveConnectors.tsx';
 
 interface Health { status: string; detail?: string; lastSuccess: string | null; errorRate: number | null; avgLatencyMs: number | null; p95LatencyMs: number | null; events: number; circuit: string }
 interface Connector {
@@ -84,7 +85,7 @@ export function Integrations({ roles }: { roles: string[] }) {
 
   return (
     <>
-      <Heading eyebrow="Supervisor" title="Integrations" subtitle="Connectors, EDI intake, the simulated clearinghouse and signed webhooks for this client. Live adapters are disabled; everything here runs on synthetic data." />
+      <Heading eyebrow="Supervisor" title="Integrations" subtitle="Connectors, EDI intake, the simulated clearinghouse and signed webhooks for this client. Live connectors stay closed until their gate opens (see Live connectors); everything else here runs on synthetic data." />
       <div className="metrics">
         <div className="panel metric"><small>Connectors</small><strong>{ov.connectors.length}</strong><span className="small muted">{ov.connectors.filter((c) => c.mode === 'disabled_live').length} live adapters disabled</span></div>
         <div className="panel metric"><small>EDI files ingested</small><strong>{ov.files.length}</strong></div>
@@ -131,6 +132,7 @@ export function Integrations({ roles }: { roles: string[] }) {
           ))}</tbody>
         </table></div>
       </Panel>
+      <LiveConnectorsPanel />
 
       <div className="grid2 int-gap">
         <div>

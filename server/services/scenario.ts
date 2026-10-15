@@ -10,9 +10,10 @@ import { SCENARIO_MAP_V1, selectScenario, selectionReasonLabel, type SelectionRe
 import type { Scope } from './auth.ts';
 import type { FactRow } from './facts.ts';
 import { loadRule, type AccountForRule, type LoadedRule } from './rules.ts';
+import { deploymentEnv } from '../config.ts';
 
 // Must equal ENVIRONMENT in server/http/app.ts (asserted in tests/rule-studio.test.ts).
-export const PHASE0_ENVIRONMENT = 'synthetic';
+export const PHASE0_ENVIRONMENT: string = deploymentEnv(); // AR_ENV, ADR 0090: drafts never run outside synthetic
 
 // Phase 0 rule: a draft (unapproved) version may run ONLY because every environment
 // is synthetic. Shadow / assisted-live environments must run approved activations.

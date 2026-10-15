@@ -13,17 +13,31 @@ import { listControls, setPause } from '../services/controls.ts';
 import { setFault } from '../connectors/executors.ts';
 import { cohort } from '../connectors/synthetic-source.ts';
 import { loadRule } from '../services/rules.ts';
-import { verifyChain } from '../services/audit.ts';
+import { verifyChainIncremental } from '../services/audit.ts';
 import { outcomeLabel } from '../../shared/rules/registry.ts';
 import { MODULES } from './modules.ts';
 import { authenticateKey, keyScope, keyScopes, KEY_PREFIX, recordKeyRequest } from '../services/access.ts';
+import { type Config, deploymentEnv, loadConfig } from '../config.ts';
+import { authenticateCookie } from '../services/web-sessions.ts';
+import { log as sharedLog, errorFields, type Logger } from '../log.ts';
+import { clientIp, cors, credentialKey, Metrics, RateLimiter, requestIdFor, securityHeaders } from './hardening.ts';
+import { opsRoute } from './ops-endpoints.ts';
 
-export const ENVIRONMENT = 'synthetic' as const;
+// Deployment kind from AR_ENV (ADR 0090): synthetic (default) | staging | production.
+export const ENVIRONMENT = deploymentEnv();
 
 export interface Ctx { req: IncomingMessage; params: Record<string, string>; query: URLSearchParams; raw: string; body: any }
 export type Handler = (ctx: Ctx) => unknown;
 /** A non-JSON response (e.g. TwiML for a telephony provider webhook, ADR 0070). */
 export class RawResponse { contentType: string; text: string; constructor(contentType: string, text: string) { this.contentType = contentType; this.text = text; } }
+/** A response with its own status and headers (redirects, Set-Cookie), ADR 0090. */
+export class HttpResponse { status: number; headers: Record<string, string | string[]>; body: unknown; constructor(status: number, headers: Record<string, string | string[]>, body: unknown = null) { this.status = status; this.headers = headers; this.body = body; } }
+
+/** Per-server runtime state used by /readyz and graceful shutdown (server/runtime.ts). */
+export interface Lifecycle { draining: boolean; inFlight: number }
+const LIFECYCLES = new WeakMap<Server, Lifecycle>();
+export const lifecycleOf = (s: Server): Lifecycle | undefined => LIFECYCLES.get(s);
+const PRINCIPALS = new WeakMap<IncomingMessage, string>();
 
 // Feature modules register their routes through this surface (see server/http/modules.ts).
 export interface ModuleApi {
@@ -31,22 +45,47 @@ export interface ModuleApi {
   route: (method: string, path: string, handler: Handler) => void;
   scoped: (ctx: Ctx) => Scope;
   header: (ctx: Ctx, k: string) => string | undefined;
+  /** Deployment configuration (ADR 0090). */
+  config: Config;
+  logger: Logger;
 }
 
-const MAX_BODY = 1_000_000;
+// The supervisor operations page lists the most recent outbox rows and work items, not all of them (ADR 0095).
+const OPS_PAGE_ROWS = 500;
 
-function readBody(req: IncomingMessage): Promise<string> {
+// An oversized body is refused with a 413 the client can read (ADR 0095): stop buffering,
+// keep draining what is still in flight (bounded) so the response is not lost to a reset
+// or EPIPE. Destroying the socket at once made every client see ECONNRESET instead of the 413.
+const MAX_DRAIN = 128 * 1024 * 1024;
+function refuseBody(req: IncomingMessage, MAX_BODY: number): AppError {
+  let drained = 0;
+  req.removeAllListeners('data');
+  req.on('data', (c: Buffer) => { drained += c.length; if (drained > MAX_DRAIN) req.socket.destroy(); });
+  const timer = setTimeout(() => req.socket.destroy(), 10_000); // a sender that never finishes
+  timer.unref();
+  req.on('end', () => clearTimeout(timer)); // drained: the keep-alive socket stays usable
+  req.resume();
+  return new AppError(413, 'too_large', `Request body too large (limit ${MAX_BODY} bytes); split the upload into smaller parts`);
+}
+
+function readBody(req: IncomingMessage, MAX_BODY: number): Promise<string> {
   return new Promise((resolve, reject) => {
+    if (Number(req.headers['content-length'] ?? 0) > MAX_BODY) { reject(refuseBody(req, MAX_BODY)); return; }
     let size = 0;
     const chunks: Buffer[] = [];
     req.on('data', (c: Buffer) => {
       size += c.length;
-      if (size > MAX_BODY) { reject(new AppError(413, 'too_large', 'Request body too large')); req.destroy(); return; }
+      if (size > MAX_BODY) { chunks.length = 0; reject(refuseBody(req, MAX_BODY)); return; }
       chunks.push(c);
     });
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     req.on('error', reject);
   });
+}
+
+// Malformed percent-encoding in a path parameter is the client's error, not a 500 (ADR 0095).
+function decodeParam(v: string): string {
+  try { return decodeURIComponent(v); } catch { throw invalid('Malformed URL encoding in the request path'); }
 }
 
 function send(res: ServerResponse, status: number, body: unknown) {
@@ -55,17 +94,28 @@ function send(res: ServerResponse, status: number, body: unknown) {
   res.end(text);
 }
 
-export function createApp(db: Db, opts: { staticDir?: string } = {}): Server {
-  const routes: { method: string; pattern: RegExp; keys: string[]; handler: Handler }[] = [];
+export function createApp(db: Db, opts: { staticDir?: string; config?: Config; logger?: Logger; metrics?: Metrics } = {}): Server {
+  const cfg = opts.config ?? loadConfig();
+  const logger = opts.logger ?? sharedLog();
+  const metrics = opts.metrics ?? new Metrics();
+  const routes: { method: string; path: string; pattern: RegExp; keys: string[]; handler: Handler }[] = [];
   const route = (method: string, path: string, handler: Handler) => {
     const keys: string[] = [];
     const pattern = new RegExp('^' + path.replace(/:(\w+)/g, (_, k) => { keys.push(k); return '([^/]+)'; }) + '$');
-    routes.push({ method, pattern, keys, handler });
+    routes.push({ method, path, pattern, keys, handler });
   };
+  // Simulator and development-identity routes exist only in the synthetic environment (ADR 0090).
+  const simRoute = (method: string, path: string, handler: Handler) => { if (cfg.synthetic) route(method, path, handler); };
 
   const ident = (ctx: Ctx) => {
     const token = (ctx.req.headers.authorization ?? '').replace(/^Bearer /, '') || undefined;
-    return token?.startsWith(KEY_PREFIX) ? authenticateKey(db, token) : authenticate(db, token); // named API keys, ADR 0080
+    let id;
+    if (token?.startsWith(KEY_PREFIX)) id = authenticateKey(db, token); // named API keys, ADR 0080
+    else if (token && !cfg.devLogin) throw new AppError(401, 'unauthenticated', 'Development tokens are not accepted in this environment');
+    else if (token) id = authenticate(db, token);
+    else id = authenticateCookie(db, cfg, ctx.req); // SSO browser session + CSRF, ADR 0090
+    PRINCIPALS.set(ctx.req, id.userId);
+    return id;
   };
   const scoped = (ctx: Ctx): Scope => {
     const id = ident(ctx);
@@ -78,8 +128,8 @@ export function createApp(db: Db, opts: { staticDir?: string } = {}): Server {
 
   // ---- public / development identity
   route('GET', '/api/health', () => ({ ok: true, environment: ENVIRONMENT, liveActions: 'disabled' }));
-  route('GET', '/api/dev/users', () => cohort().users.map((u) => ({ userId: u.userId, displayName: u.displayName })));
-  route('POST', '/api/dev/login', (ctx) => {
+  simRoute('GET', '/api/dev/users', () => cohort().users.map((u) => ({ userId: u.userId, displayName: u.displayName })));
+  simRoute('POST', '/api/dev/login', (ctx) => {
     if (ENVIRONMENT !== 'synthetic') throw notFound('Route');
     return { token: createSession(db, String(ctx.body?.userId ?? '')) };
   });
@@ -94,7 +144,7 @@ export function createApp(db: Db, opts: { staticDir?: string } = {}): Server {
   }));
   route('GET', '/api/accounts/:id', (ctx) => accountView(db, scoped(ctx), ctx.params.id));
   route('POST', '/api/accounts/:id/investigate', (ctx) => investigate(db, scoped(ctx), ctx.params.id));
-  route('POST', '/api/accounts/:id/calls/simulate', (ctx) => simulateCall(db, scoped(ctx), ctx.params.id));
+  simRoute('POST', '/api/accounts/:id/calls/simulate', (ctx) => simulateCall(db, scoped(ctx), ctx.params.id));
   route('POST', '/api/accounts/:id/facts/:key/correct', (ctx) => correctFact(db, scoped(ctx), ctx.params.id, ctx.params.key, ctx.body ?? {}));
   route('GET', '/api/accounts/:id/audit-export', (ctx) => auditExport(db, scoped(ctx), ctx.params.id));
 
@@ -142,11 +192,12 @@ export function createApp(db: Db, opts: { staticDir?: string } = {}): Server {
     return {
       outbox: all(db, `SELECT o.action_id, o.idempotency_key, o.connector, o.state, o.attempts, o.external_reference, o.last_error, o.updated_at, p.kind, p.account_id, a.external_id
         FROM action_outbox o JOIN proposed_actions p USING (tenant_id, client_id, action_id) JOIN accounts a ON a.tenant_id=p.tenant_id AND a.client_id=p.client_id AND a.account_id=p.account_id
-        WHERE o.tenant_id=? AND o.client_id=? ORDER BY o.updated_at DESC`, s.tenantId, s.clientId),
+        WHERE o.tenant_id=? AND o.client_id=? ORDER BY o.updated_at DESC LIMIT ${OPS_PAGE_ROWS}`, s.tenantId, s.clientId),
       controls: listControls(db, s.tenantId, s.clientId),
-      workItems: all(db, 'SELECT work_item_id, account_id, kind, summary, state, created_at FROM work_items WHERE tenant_id=? AND client_id=? ORDER BY created_at DESC', s.tenantId, s.clientId),
+      workItems: all(db, `SELECT work_item_id, account_id, kind, summary, state, created_at FROM work_items WHERE tenant_id=? AND client_id=? ORDER BY created_at DESC LIMIT ${OPS_PAGE_ROWS}`, s.tenantId, s.clientId),
       faults: all(db, 'SELECT fault, remaining FROM sim_faults'),
-      auditChain: verifyChain(db, s.tenantId),
+      auditChain: verifyChainIncremental(db, s.tenantId), // ADR 0095: full re-walk at most every 10 min
+      limits: { rows: OPS_PAGE_ROWS, note: 'Most recent rows only (ADR 0095)' },
     };
   });
   route('POST', '/api/ops/worker/tick', (ctx) => { requirePerm(scoped(ctx), 'operate'); return tick(db); });
@@ -158,14 +209,14 @@ export function createApp(db: Db, opts: { staticDir?: string } = {}): Server {
     setPause(db, s, `client:${s.tenantId}/${s.clientId}`, !!ctx.body?.paused, reason, s.userId);
     return listControls(db, s.tenantId, s.clientId);
   });
-  route('POST', '/api/ops/faults', (ctx) => {
+  simRoute('POST', '/api/ops/faults', (ctx) => {
     requirePerm(scoped(ctx), 'operate');
     const fault = ctx.body?.fault;
     if (fault !== 'timeout_after_success' && fault !== 'timeout_before_send') throw invalid('Unknown fault');
     setFault(db, fault, Math.max(0, Math.min(5, Number(ctx.body?.remaining ?? 1))));
     return all(db, 'SELECT fault, remaining FROM sim_faults');
   });
-  route('POST', '/api/ops/sim-confirm/:actionId', (ctx) => {
+  simRoute('POST', '/api/ops/sim-confirm/:actionId', (ctx) => {
     const s = scoped(ctx);
     requirePerm(s, 'operate');
     const o = one<{ external_reference: string | null; connector: string }>(db, 'SELECT external_reference, connector FROM action_outbox WHERE tenant_id=? AND client_id=? AND action_id=?', s.tenantId, s.clientId, ctx.params.actionId);
@@ -177,35 +228,76 @@ export function createApp(db: Db, opts: { staticDir?: string } = {}): Server {
   });
 
   // ---- signed webhook from the simulated payer (no session; signature authenticates)
-  route('POST', '/api/webhooks/sim-payer', (ctx) => handlePayerWebhook(db, ctx.raw, header(ctx, 'x-signature'), header(ctx, 'x-timestamp')));
+  simRoute('POST', '/api/webhooks/sim-payer', (ctx) => handlePayerWebhook(db, ctx.raw, header(ctx, 'x-signature'), header(ctx, 'x-timestamp')));
 
-  for (const register of MODULES) register({ db, route, scoped, header });
+  for (const register of MODULES) register({ db, route, scoped, header, config: cfg, logger });
 
   const staticDir = opts.staticDir;
-  return createServer(async (req, res) => {
+  const life: Lifecycle = { draining: false, inFlight: 0 };
+  const ipLimiter = new RateLimiter(cfg.rateLimit.ipPerMinute);
+  const keyLimiter = new RateLimiter(cfg.rateLimit.keyPerMinute);
+  const server = createServer(async (req, res) => {
     const url = new URL(req.url ?? '/', 'http://localhost');
+    const requestId = requestIdFor(req);
+    const started = process.hrtime.bigint();
+    let routeLabel = url.pathname.startsWith('/api/') ? 'unmatched' : 'static';
+    life.inFlight++;
+    res.on('close', () => {
+      life.inFlight--;
+      const seconds = Number(process.hrtime.bigint() - started) / 1e9;
+      metrics.observeRequest({ method: req.method ?? '', route: routeLabel, status: String(res.statusCode) }, seconds);
+      if (!routeLabel.startsWith('ops:')) logger.info('http_request', { requestId, method: req.method, route: routeLabel, status: res.statusCode, durationMs: Math.round(seconds * 1000), principal: PRINCIPALS.get(req) ?? null });
+    });
+    securityHeaders(cfg, res, requestId);
+    const fail = (status: number, code: string, message: string, details: unknown = null, extra: Record<string, string> = {}) => {
+      if (res.headersSent) return;
+      for (const [k, v] of Object.entries(extra)) res.setHeader(k, v);
+      send(res, status, { error: { code, message, details, requestId } });
+    };
     try {
+      const ops = opsRoute(url.pathname);
+      if (ops) { routeLabel = `ops:${url.pathname}`; return await ops({ db, cfg, req, res, metrics, life }); }
+      const c = cors(cfg, req, res);
+      if (c === 'refused') return fail(403, 'origin_refused', 'Request origin is not allowed');
+      if (c === 'preflight-ok') { res.writeHead(204); res.end(); return; }
+      const credKey = credentialKey(req, cfg.session.cookieName);
+      const wait = ipLimiter.take('ip:' + clientIp(req, cfg.trustProxyHops)) || (credKey ? keyLimiter.take(credKey) : 0);
+      if (wait) { metrics.inc('ar_http_rate_limited_total', 'Requests refused by the rate limiter'); return fail(429, 'rate_limited', 'Too many requests; slow down', null, { 'retry-after': String(wait) }); }
       if (!url.pathname.startsWith('/api/')) {
         if (staticDir && serveStatic(staticDir, url.pathname, res)) return;
-        return send(res, 404, { error: { code: 'not_found', message: 'Not found' } });
+        return fail(404, 'not_found', 'Not found');
       }
       const match = routes.map((r) => ({ r, m: req.method === r.method ? url.pathname.match(r.pattern) : null })).find((x) => x.m);
       if (!match) throw notFound('Route');
-      const raw = req.method === 'POST' ? await readBody(req) : '';
+      routeLabel = match.r.path;
+      const raw = req.method === 'POST' || req.method === 'PUT' ? await readBody(req, cfg.http.bodyLimitBytes) : '';
       let body: unknown = null;
       const form = /^application\/x-www-form-urlencoded/i.test(String(req.headers['content-type'] ?? ''));
       if (raw && form) body = Object.fromEntries(new URLSearchParams(raw));
       else if (raw) { try { body = JSON.parse(raw); } catch { throw invalid('Body must be JSON'); } }
-      const params = Object.fromEntries(match.r.keys.map((k, i) => [k, decodeURIComponent(match.m![i + 1])]));
-      const out = await match.r.handler({ req, params, query: url.searchParams, raw, body });
+      const params = Object.fromEntries(match.r.keys.map((k, i) => [k, decodeParam(match.m![i + 1])]));
+      let timer: NodeJS.Timeout | undefined;
+      const timeout = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new AppError(503, 'timeout', 'The request took too long; it may still complete. Check its state before retrying.')), cfg.http.handlerTimeoutMs); });
+      const out = await Promise.race([Promise.resolve().then(() => match.r.handler({ req, params, query: url.searchParams, raw, body })), timeout]).finally(() => clearTimeout(timer));
+      if (res.headersSent) return;
       if (out instanceof RawResponse) { res.writeHead(200, { 'content-type': out.contentType, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' }); res.end(out.text); return; }
+      if (out instanceof HttpResponse) {
+        for (const [k, v] of Object.entries(out.headers)) res.setHeader(k, v);
+        if (out.body === null) { res.writeHead(out.status, { 'cache-control': 'no-store' }); res.end(); return; }
+        return send(res, out.status, out.body);
+      }
       send(res, 200, out ?? { ok: true });
     } catch (err) {
-      if (err instanceof AppError) return send(res, err.status, { error: { code: err.code, message: err.message, details: err.details ?? null } });
-      console.error('[api]', (err as Error).stack);
-      send(res, 500, { error: { code: 'internal', message: 'Internal error' } });
+      if (err instanceof AppError) return fail(err.status, err.code, err.message, err.details ?? null);
+      logger.error('http_unhandled_error', { requestId, route: routeLabel, ...errorFields(err, cfg.synthetic) });
+      fail(500, 'internal', 'Internal error');
     }
   });
+  server.requestTimeout = cfg.http.requestTimeoutMs;
+  server.headersTimeout = Math.min(cfg.http.requestTimeoutMs, 20_000);
+  server.keepAliveTimeout = 5_000;
+  LIFECYCLES.set(server, life);
+  return server;
 }
 
 const TYPES: Record<string, string> = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json', '.woff2': 'font/woff2' };

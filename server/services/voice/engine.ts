@@ -29,13 +29,14 @@ import { guardInbound, guardOutbound, type GuardVerdict } from '../guard.ts';
 import { open as openText, seal } from '../phi.ts';
 import { speakDollars, speakIsoDate, speakReference } from './spoken.ts';
 import { finishSimulatedRecording, recordingGate, startSimulatedRecording } from '../recording.ts';
+import { isSyntheticDeployment } from '../../config.ts';
 
 export const TERMINAL_STATES = ['completed', 'dropped', 'cancelled', 'failed'];
 const AUTOMATED_STATES = ACTIVE_CALL_STATES.filter((s) => s !== 'handoff_to_human');
 export const ENGINE_VERSION = 'voice-orchestrator.v1';
 const STEP_MS = Number(process.env.AR_VOICE_STEP_MS ?? 1000);
 // Mirrors ENVIRONMENT in server/http/app.ts: simulator controls exist only in the synthetic environment.
-const SYNTHETIC_ENVIRONMENT = true;
+const SYNTHETIC_ENVIRONMENT = isSyntheticDeployment(); // AR_ENV, ADR 0090
 
 export interface CallRow {
   tenant_id: string; client_id: string; call_id: string; account_id: string; payer_id: string; destination: string; scenario_id: string;

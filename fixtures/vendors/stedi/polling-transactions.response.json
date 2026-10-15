@@ -1,0 +1,89 @@
+{
+ "source": "Stedi Core OpenAPI spec (official): https://raw.githubusercontent.com/Stedi/openApi/main/core.json",
+ "retrievedAt": "2026-10-14",
+ "info": "Documented example copied verbatim from the spec; the example name is in \"example\".",
+ "example": "ListPollingTransactions_example1",
+ "value": {
+  "items": [
+   {
+    "direction": "INBOUND",
+    "mode": "test",
+    "status": "succeeded",
+    "fileExecutionId": "95236a56-a020-4522-8fef-bcffcec0ec1d",
+    "transactionId": "c8dd3a67-b8ca-4b0e-aa73-e0de82414b8f",
+    "processedAt": "2025-04-02T21:30:15.801Z",
+    "artifacts": [
+     {
+      "artifactType": "application/edi-x12",
+      "sizeBytes": 8374,
+      "model": "transaction",
+      "usage": "input",
+      "url": "https://core.us.stedi.com/2023-08-01/transactions/4443355-b8ca-4b0e-aa73-e0de12314b8f/input"
+     },
+     {
+      "artifactType": "application/json",
+      "sizeBytes": 76898,
+      "model": "transaction",
+      "usage": "output",
+      "url": "https://core.us.stedi.com/2023-08-01/transactions/111222333-b8ca-4b0e-aa73-e0de67454b8f/output"
+     }
+    ],
+    "partnership": {
+     "partnershipId": "local-clearinghouse-test",
+     "partnershipType": "x12",
+     "sender": {
+      "profileId": "clearinghouse-test"
+     },
+     "receiver": {
+      "profileId": "local"
+     }
+    },
+    "businessIdentifiers": [
+     {
+      "elementId": "127",
+      "element": "BHT-03",
+      "name": "Reference Identification",
+      "value": "XXXXXX"
+     }
+    ],
+    "x12": {
+     "metadata": {
+      "interchange": {
+       "acknowledgmentRequestedCode": "0",
+       "controlNumber": 1
+      },
+      "functionalGroup": {
+       "controlNumber": 1,
+       "release": "005010X222A1",
+       "date": "2025-04-02",
+       "time": "21:29:57",
+       "functionalIdentifierCode": "HC"
+      },
+      "transaction": {
+       "controlNumber": "0001",
+       "transactionSetIdentifier": "837"
+      },
+      "receiver": {
+       "applicationCode": "STEDI-TEST",
+       "isa": {
+        "qualifier": "ZZ",
+        "id": "STEDI-TEST"
+       }
+      },
+      "sender": {
+       "applicationCode": "TestSender",
+       "isa": {
+        "qualifier": "ZZ",
+        "id": "TestSender"
+       }
+      }
+     },
+     "transactionSetting": {
+      "guideId": "01JQW6E5RSBSTKS3ZQ1SPR4019",
+      "transactionSettingId": "01JQW6E72Q3HDXM40YYAQCBZDY"
+     }
+    }
+   }
+  ]
+ }
+}
