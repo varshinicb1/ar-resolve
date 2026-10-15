@@ -123,6 +123,8 @@ npx wrangler secret put DEMO_PASSWORD   # at least 12 characters
 npx wrangler deploy                     # first deploy can take several minutes to provision
 ```
 
+Or run `node deploy/cloudflare/setup.mjs` (Docker running): it opens a local page where you enter only the Cloudflare API token, account ID and demo password, and it runs the deploy for you. Add `--dry-run` to build without uploading.
+
 The demo resets after 30 idle minutes (container disk is ephemeral). Use vendor sandbox/test keys only.
 
 ## Limitations

@@ -30,6 +30,16 @@ no local file and no long-lived process.
 - Wrangler and `@cloudflare/containers` live in `deploy/cloudflare/package.json`, not the root, so
   the app image and CI do not install them. Versions are pinned to releases at least two weeks old.
 
+- **One local setup page** (`deploy/cloudflare/setup.mjs`, owner request 2026-10-15): a page on
+  127.0.0.1 with three fields (API token, account ID, demo password) that runs `wrangler whoami`
+  and `wrangler deploy --secrets-file`. The token and account ID live only in the wrangler child
+  process environment; the password only in a 0600 temp file deleted when wrangler exits; log lines
+  have both redacted. Every request needs a random key printed in the terminal and a 127.0.0.1 /
+  localhost Host header, so another site in the browser cannot drive it. Verified here with
+  `--dry-run` (Docker stopped gives a clear error; with Docker the build passes and the password is
+  absent from the log). The token hint names the dashboard's "Edit Cloudflare Workers" template; that
+  it covers Containers is unverified until the first real deploy.
+
 ## Costs
 
 - Containers need the Workers Paid plan and are billed while the instance runs. `sleepAfter` is
