@@ -1,7 +1,7 @@
 {
   "mode": "quick",
   "command": "npm run stress:quick",
-  "startedAt": "2026-10-15T17:59:37.852Z",
+  "startedAt": "2026-10-15T19:07:33.482Z",
   "machine": {
     "nproc": 4,
     "cpuModel": "Intel(R) Xeon(R) Processor @ 2.80GHz",
@@ -14,7 +14,7 @@
     {
       "name": "hostile",
       "title": "Large, malformed and fuzzed inputs",
-      "durationMs": 4225,
+      "durationMs": 3953,
       "metrics": {
         "oversized.declared.1.4MB": {
           "status": 413,
@@ -24,22 +24,22 @@
         "oversized.declared.9.5MB": {
           "status": 413,
           "error": null,
-          "ms": 3
+          "ms": 5
         },
         "oversized.declared.95.4MB": {
           "status": 413,
           "error": null,
-          "ms": 9
+          "ms": 19
         },
         "oversized.chunked.4.8MB": {
           "status": 413,
           "error": null,
-          "ms": 25
+          "ms": 29
         },
         "oversized.chunked.47.7MB": {
           "status": 413,
           "error": null,
-          "ms": 55
+          "ms": 63
         },
         "nestedJson": {
           "requests": 72,
@@ -49,7 +49,7 @@
             "409": 6,
             "422": 5
           },
-          "slowestMs": 245
+          "slowestMs": 143
         },
         "malformed": {
           "requests": 40,
@@ -63,17 +63,17 @@
         "csvShape.one 890 KB line": {
           "bytes": 888110,
           "status": 409,
-          "ms": 29
+          "ms": 47
         },
         "csvShape.200k blank lines": {
           "bytes": 200109,
           "status": 200,
-          "ms": 8
+          "ms": 11
         },
         "csvShape.50k columns": {
           "bytes": 200110,
           "status": 409,
-          "ms": 27
+          "ms": 33
         },
         "csvShape.quoted commas": {
           "bytes": 187,
@@ -83,7 +83,7 @@
         "csvShape.80k tiny rows": {
           "bytes": 160109,
           "status": 409,
-          "ms": 88
+          "ms": 98
         },
         "csvFuzz": {
           "requests": 155,
@@ -93,11 +93,11 @@
           },
           "latencyMs": {
             "n": 150,
-            "p50": 5,
-            "p95": 11.3,
-            "p99": 34.4,
-            "max": 35,
-            "mean": 6.4
+            "p50": 6,
+            "p95": 12.6,
+            "p99": 32.3,
+            "max": 38.2,
+            "mean": 7.2
           }
         },
         "x12Fuzz": {
@@ -109,11 +109,11 @@
           },
           "latencyMs": {
             "n": 320,
-            "p50": 5.2,
-            "p95": 18.9,
-            "p99": 23.1,
-            "max": 44,
-            "mean": 7
+            "p50": 6.5,
+            "p95": 21,
+            "p99": 31.4,
+            "max": 45.4,
+            "mean": 8.4
           }
         },
         "totals": {
@@ -128,18 +128,18 @@
             "431": 1
           },
           "slowest": {
-            "label": "nested array 400000 -> remittance",
-            "ms": 245
+            "label": "nested array 400000 -> rule draft",
+            "ms": 143
           },
           "serverStackTraces": 0,
           "server": {
-            "samples": 4,
-            "rssStartMb": 169.3,
-            "rssEndMb": 356.3,
-            "rssPeakMb": 356.3,
-            "heapEndMb": 59.7,
-            "eventLoopP99MaxMs": 241.3,
-            "eventLoopMaxMs": 241.3
+            "samples": 3,
+            "rssStartMb": 176.1,
+            "rssEndMb": 339.6,
+            "rssPeakMb": 339.6,
+            "heapEndMb": 38.7,
+            "eventLoopP99MaxMs": 141.7,
+            "eventLoopMaxMs": 141.7
           }
         }
       },
@@ -191,7 +191,7 @@
     {
       "name": "investigations",
       "title": "Concurrent investigations (many accounts, and one account)",
-      "durationMs": 1486,
+      "durationMs": 1515,
       "metrics": {
         "manyAccounts": {
           "accounts": 300,
@@ -201,11 +201,11 @@
           },
           "latencyMs": {
             "n": 300,
-            "p50": 25,
-            "p95": 53.4,
-            "p99": 168.8,
-            "max": 246.7,
-            "mean": 29.8
+            "p50": 27.3,
+            "p95": 58.6,
+            "p99": 157.7,
+            "max": 258.5,
+            "mean": 30.7
           }
         },
         "sameAccountInvestigate": {
@@ -215,11 +215,11 @@
           },
           "latencyMs": {
             "n": 40,
-            "p50": 49.2,
-            "p95": 88.4,
-            "p99": 93.8,
-            "max": 93.8,
-            "mean": 48.3
+            "p50": 51.7,
+            "p95": 93.3,
+            "p99": 97.1,
+            "max": 97.1,
+            "mean": 50.7
           }
         },
         "sameRevisionCorrections": {
@@ -293,7 +293,7 @@
     {
       "name": "approvals",
       "title": "Approval races and multi-process outbox dispatch",
-      "durationMs": 6326,
+      "durationMs": 6243,
       "metrics": {
         "approvalStorm": {
           "actions": 20,
@@ -305,11 +305,11 @@
           },
           "latencyMs": {
             "n": 340,
-            "p50": 262.7,
-            "p95": 421,
-            "p99": 438.6,
-            "max": 441.8,
-            "mean": 259.2
+            "p50": 275.6,
+            "p95": 430.3,
+            "p99": 438,
+            "max": 439.8,
+            "mean": 273.2
           }
         },
         "apiTicksDuringWorkerStorm": {
@@ -318,11 +318,11 @@
           },
           "latencyMs": {
             "n": 40,
-            "p50": 2,
-            "p95": 312.7,
-            "p99": 313.1,
-            "max": 313.1,
-            "mean": 42.3
+            "p50": 1.1,
+            "p95": 347.2,
+            "p99": 348.2,
+            "max": 348.2,
+            "mean": 42.8
           }
         },
         "webhookReplays": {
@@ -423,13 +423,13 @@
     {
       "name": "crash",
       "title": "Crash mid-dispatch and restart",
-      "durationMs": 4416,
+      "durationMs": 4345,
       "metrics": {
         "workerKillTimings": [
           {
             "worker": "crashworker0",
-            "msToSeeClaim": 432,
-            "claimAgeWhenSeenMs": 13,
+            "msToSeeClaim": 423,
+            "claimAgeWhenSeenMs": 9,
             "outboxAfterKill": {
               "dispatching": 1,
               "pending": 16
@@ -437,8 +437,8 @@
           },
           {
             "worker": "crashworker1",
-            "msToSeeClaim": 405,
-            "claimAgeWhenSeenMs": 8,
+            "msToSeeClaim": 394,
+            "claimAgeWhenSeenMs": 7,
             "outboxAfterKill": {
               "dispatching": 2,
               "pending": 15
@@ -446,8 +446,8 @@
           },
           {
             "worker": "crashworker2",
-            "msToSeeClaim": 433,
-            "claimAgeWhenSeenMs": 4,
+            "msToSeeClaim": 439,
+            "claimAgeWhenSeenMs": 5,
             "outboxAfterKill": {
               "dispatching": 3,
               "pending": 14
@@ -455,8 +455,8 @@
           },
           {
             "worker": "crashworker3",
-            "msToSeeClaim": 437,
-            "claimAgeWhenSeenMs": 3,
+            "msToSeeClaim": 414,
+            "claimAgeWhenSeenMs": 12,
             "outboxAfterKill": {
               "dispatching": 4,
               "pending": 13
@@ -466,8 +466,8 @@
         "approvedPending": 20,
         "kills": {
           "count": 5,
-          "sentBeforeKill": 2,
-          "notYetSent": 3,
+          "sentBeforeKill": 1,
+          "notYetSent": 4,
           "stateAfterKills": {
             "dispatching": 5,
             "pending": 15
@@ -498,11 +498,11 @@
           },
           {
             "killed": "crashworker2",
-            "sentAtKill": true,
+            "sentAtKill": false,
             "finalState": "confirmed",
-            "dispatches": 1,
+            "dispatches": 2,
             "reconcile": [
-              "found_at_connector"
+              "absent_at_connector"
             ]
           },
           {
@@ -530,7 +530,7 @@
           "decisions": 20,
           "outbox": 20,
           "connectorReceived": 20,
-          "auditEvents": 322
+          "auditEvents": 323
         }
       },
       "checks": [
@@ -578,7 +578,7 @@
     {
       "name": "voice",
       "title": "Concurrent simulated calls and call advancement",
-      "durationMs": 1217,
+      "durationMs": 1156,
       "metrics": {
         "startStorm": {
           "requests": 105,
@@ -597,11 +597,11 @@
           },
           "latencyMs": {
             "n": 105,
-            "p50": 116.4,
-            "p95": 219.4,
-            "p99": 236.7,
-            "max": 238.3,
-            "mean": 119.3
+            "p50": 123.4,
+            "p95": 197.4,
+            "p99": 213.7,
+            "max": 215.1,
+            "mean": 119.2
           }
         },
         "advance": {
@@ -612,11 +612,11 @@
           },
           "latencyMs": {
             "n": 103,
-            "p50": 3.5,
-            "p95": 47.3,
-            "p99": 61,
-            "max": 65.7,
-            "mean": 8
+            "p50": 3.4,
+            "p95": 43.6,
+            "p99": 59.3,
+            "max": 64.1,
+            "mean": 7.6
           }
         },
         "limits": {
@@ -693,7 +693,7 @@
     {
       "name": "isolation",
       "title": "Scope isolation under concurrent load",
-      "durationMs": 2387,
+      "durationMs": 2290,
       "metrics": {
         "requests": {
           "total": 3000,
@@ -744,11 +744,11 @@
           },
           "latencyMs": {
             "n": 3000,
-            "p50": 15.8,
-            "p95": 26.8,
-            "p99": 38.7,
-            "max": 306.2,
-            "mean": 17.5
+            "p50": 15.5,
+            "p95": 24.8,
+            "p99": 35.3,
+            "max": 319.6,
+            "mean": 16.9
           }
         }
       },
@@ -775,13 +775,13 @@
     {
       "name": "scale",
       "title": "Bulk import and read latency at 1k / 10k / 50k accounts",
-      "durationMs": 14831,
+      "durationMs": 14133,
       "metrics": {
         "1k.wholeFileUpload": {
           "bytes": 113154,
           "status": 200,
           "error": null,
-          "ms": 36
+          "ms": 28
         },
         "1k.import": {
           "accounts": 1000,
@@ -791,16 +791,16 @@
             "200": 1
           },
           "totalSeconds": 0.2,
-          "rowsPerSecond": 4367,
-          "slowestPartMs": 228,
+          "rowsPerSecond": 4888,
+          "slowestPartMs": 204,
           "server": {
             "samples": 2,
-            "rssStartMb": 125.6,
+            "rssStartMb": 125.7,
             "rssEndMb": 125.9,
             "rssPeakMb": 125.9,
-            "heapEndMb": 22.3,
-            "eventLoopP99MaxMs": 230.7,
-            "eventLoopMaxMs": 230.7
+            "heapEndMb": 22.4,
+            "eventLoopP99MaxMs": 207,
+            "eventLoopMaxMs": 207
           },
           "dbMb": 4.9,
           "walMb": 5.5
@@ -812,77 +812,77 @@
             "200": 400
           },
           "queue_first_page": {
-            "n": 61,
-            "p50": 13.3,
-            "p95": 28.1,
-            "p99": 56.8,
-            "max": 56.8,
-            "mean": 15
+            "n": 66,
+            "p50": 11.9,
+            "p95": 27.2,
+            "p99": 34.5,
+            "max": 34.5,
+            "mean": 14.4
           },
           "queue_deep_page": {
-            "n": 71,
-            "p50": 13.9,
-            "p95": 25.7,
-            "p99": 72.1,
-            "max": 72.1,
-            "mean": 15.7
+            "n": 60,
+            "p50": 12.5,
+            "p95": 24.9,
+            "p99": 54,
+            "max": 54,
+            "mean": 14.5
           },
           "queue_view_filter": {
-            "n": 64,
-            "p50": 13.6,
-            "p95": 28.4,
-            "p99": 30.5,
-            "max": 30.5,
-            "mean": 15.3
+            "n": 70,
+            "p50": 11.9,
+            "p95": 37.3,
+            "p99": 57.1,
+            "max": 57.1,
+            "mean": 15.8
           },
           "search_exact": {
-            "n": 73,
-            "p50": 12.6,
-            "p95": 26.2,
-            "p99": 27.9,
-            "max": 27.9,
-            "mean": 13.2
+            "n": 65,
+            "p50": 10.8,
+            "p95": 21,
+            "p99": 24.8,
+            "max": 24.8,
+            "mean": 12.4
           },
           "search_partial": {
-            "n": 74,
-            "p50": 13.1,
-            "p95": 26.9,
-            "p99": 42.8,
-            "max": 42.8,
-            "mean": 15
+            "n": 53,
+            "p50": 11.7,
+            "p95": 20.6,
+            "p99": 41.2,
+            "max": 41.2,
+            "mean": 12.8
           },
           "account_detail": {
-            "n": 57,
-            "p50": 12.7,
-            "p95": 24.1,
-            "p99": 29,
-            "max": 29,
-            "mean": 13.9
+            "n": 86,
+            "p50": 10.4,
+            "p95": 26.5,
+            "p99": 36.8,
+            "max": 36.8,
+            "mean": 13.2
           }
         },
         "1k.opsOutboxMs": {
           "n": 3,
-          "p50": 1.2,
-          "p95": 38,
-          "p99": 38,
-          "max": 38,
-          "mean": 13.3
+          "p50": 0.9,
+          "p95": 24.8,
+          "p99": 24.8,
+          "max": 24.8,
+          "mean": 8.8
         },
         "1k.edi835": {
           "claims": 1000,
           "bytes": 199797,
           "previewStatus": 200,
-          "previewMs": 102,
+          "previewMs": 89,
           "matched": 1000,
           "ingestStatus": 200,
-          "ingestMs": 851,
+          "ingestMs": 842,
           "ingestError": null
         },
         "5k.wholeFileUpload": {
           "bytes": 564880,
           "status": 200,
           "error": null,
-          "ms": 116
+          "ms": 120
         },
         "5k.import": {
           "accounts": 5000,
@@ -891,17 +891,17 @@
           "statuses": {
             "200": 1
           },
-          "totalSeconds": 0.9,
-          "rowsPerSecond": 5665,
-          "slowestPartMs": 880,
+          "totalSeconds": 0.8,
+          "rowsPerSecond": 6229,
+          "slowestPartMs": 800,
           "server": {
             "samples": 2,
-            "rssStartMb": 152.8,
-            "rssEndMb": 153,
-            "rssPeakMb": 153,
-            "heapEndMb": 28.7,
-            "eventLoopP99MaxMs": 876.6,
-            "eventLoopMaxMs": 876.6
+            "rssStartMb": 153.1,
+            "rssEndMb": 153.2,
+            "rssPeakMb": 153.2,
+            "heapEndMb": 34.6,
+            "eventLoopP99MaxMs": 801.6,
+            "eventLoopMaxMs": 801.6
           },
           "dbMb": 16.1,
           "walMb": 16.8
@@ -913,70 +913,70 @@
             "200": 400
           },
           "queue_first_page": {
-            "n": 72,
-            "p50": 38.6,
-            "p95": 78.1,
-            "p99": 105.4,
-            "max": 105.4,
-            "mean": 42.9
+            "n": 52,
+            "p50": 37.9,
+            "p95": 71.8,
+            "p99": 94.5,
+            "max": 94.5,
+            "mean": 41.3
           },
           "queue_deep_page": {
-            "n": 70,
-            "p50": 41.1,
-            "p95": 108.3,
-            "p99": 199.3,
-            "max": 199.3,
-            "mean": 50.2
+            "n": 65,
+            "p50": 39.5,
+            "p95": 70.7,
+            "p99": 107.7,
+            "max": 107.7,
+            "mean": 41.3
           },
           "queue_view_filter": {
-            "n": 59,
-            "p50": 38.9,
-            "p95": 71.6,
-            "p99": 94.6,
-            "max": 94.6,
-            "mean": 41.7
+            "n": 61,
+            "p50": 34.6,
+            "p95": 79.7,
+            "p99": 86.2,
+            "max": 86.2,
+            "mean": 40.2
           },
           "search_exact": {
-            "n": 63,
-            "p50": 39.3,
-            "p95": 60.2,
-            "p99": 71,
-            "max": 71,
-            "mean": 39
+            "n": 75,
+            "p50": 31.6,
+            "p95": 66.7,
+            "p99": 93.1,
+            "max": 93.1,
+            "mean": 35.4
           },
           "search_partial": {
-            "n": 67,
-            "p50": 39.3,
-            "p95": 92,
-            "p99": 116.6,
-            "max": 116.6,
-            "mean": 46.3
+            "n": 82,
+            "p50": 34.4,
+            "p95": 85.2,
+            "p99": 169.1,
+            "max": 169.1,
+            "mean": 40.8
           },
           "account_detail": {
-            "n": 69,
-            "p50": 31.7,
-            "p95": 76.7,
-            "p99": 162.6,
-            "max": 162.6,
-            "mean": 38.4
+            "n": 65,
+            "p50": 32.9,
+            "p95": 98.6,
+            "p99": 105.5,
+            "max": 105.5,
+            "mean": 39.4
           }
         },
         "5k.opsOutboxMs": {
           "n": 3,
-          "p50": 19.3,
-          "p95": 121.2,
-          "p99": 121.2,
-          "max": 121.2,
-          "mean": 48.8
+          "p50": 2.8,
+          "p95": 112.2,
+          "p99": 112.2,
+          "max": 112.2,
+          "mean": 38.6
         },
         "5k.edi835": {
           "claims": 4250,
           "bytes": 851121,
           "previewStatus": 200,
-          "previewMs": 414,
+          "previewMs": 463,
           "matched": 4250,
           "ingestStatus": 200,
-          "ingestMs": 4387,
+          "ingestMs": 4158,
           "ingestError": null
         }
       },
@@ -1048,149 +1048,149 @@
     {
       "name": "soak",
       "title": "Sustained mixed workload (memory and event-loop lag)",
-      "durationMs": 23778,
+      "durationMs": 23420,
       "metrics": {
         "workload": {
           "seconds": 22,
-          "requests": 7044,
-          "throughputPerSecond": 352,
+          "requests": 7148,
+          "throughputPerSecond": 357,
           "statuses": {
-            "200": 6989,
+            "200": 7093,
             "422": 55
           },
-          "approvals": 73,
+          "approvals": 60,
           "importsCommitted": 13
         },
         "latencyMs": {
+          "queue": {
+            "n": 1908,
+            "p50": 29.3,
+            "p95": 55.2,
+            "p99": 85.5,
+            "max": 116.7,
+            "mean": 32
+          },
           "reviews": {
-            "n": 821,
-            "p50": 25.7,
-            "p95": 44.1,
-            "p99": 76,
-            "max": 128.5,
-            "mean": 27.5
+            "n": 815,
+            "p50": 24.7,
+            "p95": 48.4,
+            "p99": 71.4,
+            "max": 153.7,
+            "mean": 27.3
           },
           "detail": {
-            "n": 1866,
-            "p50": 26.7,
-            "p95": 54.5,
-            "p99": 77,
-            "max": 143.6,
-            "mean": 29.5
-          },
-          "queue": {
-            "n": 1839,
-            "p50": 29.7,
-            "p95": 52.8,
-            "p99": 78.4,
-            "max": 142.2,
-            "mean": 32.2
+            "n": 1806,
+            "p50": 26.9,
+            "p95": 58.8,
+            "p99": 83.9,
+            "max": 154,
+            "mean": 30.5
           },
           "search": {
-            "n": 1099,
+            "n": 1045,
             "p50": 27.7,
-            "p95": 47.8,
-            "p99": 78.7,
-            "max": 144.3,
-            "mean": 29.7
+            "p95": 51,
+            "p99": 73.5,
+            "max": 114,
+            "mean": 29.8
           },
           "investigate": {
-            "n": 989,
-            "p50": 36,
-            "p95": 75.7,
-            "p99": 96.7,
-            "max": 125.4,
-            "mean": 40.4
+            "n": 1209,
+            "p50": 29.2,
+            "p95": 61.9,
+            "p99": 93,
+            "max": 140.9,
+            "mean": 33
           },
           "import": {
             "n": 13,
-            "p50": 92.3,
-            "p95": 176.9,
-            "p99": 176.9,
-            "max": 176.9,
-            "mean": 105.5
+            "p50": 80.1,
+            "p95": 182.1,
+            "p99": 182.1,
+            "max": 182.1,
+            "mean": 93.5
           },
-          "correct": {
-            "n": 214,
-            "p50": 29.7,
-            "p95": 81,
-            "p99": 103.1,
-            "max": 130.8,
-            "mean": 37
+          "approve": {
+            "n": 60,
+            "p50": 43.7,
+            "p95": 78.4,
+            "p99": 116.2,
+            "max": 116.2,
+            "mean": 46.4
           },
           "edi_preview": {
             "n": 37,
-            "p50": 50.6,
-            "p95": 106,
-            "p99": 212.5,
-            "max": 212.5,
-            "mean": 54.2
+            "p50": 42.5,
+            "p95": 178.8,
+            "p99": 239.2,
+            "max": 239.2,
+            "mean": 51.8
           },
           "call_start": {
             "n": 57,
-            "p50": 47,
-            "p95": 93.1,
-            "p99": 248,
-            "max": 248,
-            "mean": 52.7
+            "p50": 36.2,
+            "p95": 121.3,
+            "p99": 275.4,
+            "max": 275.4,
+            "mean": 51.5
           },
-          "approve": {
-            "n": 73,
-            "p50": 27.9,
-            "p95": 64.4,
-            "p99": 111.7,
-            "max": 111.7,
-            "mean": 33.5
+          "correct": {
+            "n": 162,
+            "p50": 46.9,
+            "p95": 78.4,
+            "p99": 106.4,
+            "max": 127.3,
+            "mean": 46.3
           },
           "ops_outbox": {
             "n": 18,
-            "p50": 50,
-            "p95": 335.8,
-            "p99": 335.8,
-            "max": 335.8,
-            "mean": 71.8
+            "p50": 48.1,
+            "p95": 361.7,
+            "p99": 361.7,
+            "max": 361.7,
+            "mean": 68
           },
           "tick": {
             "n": 18,
-            "p50": 55.7,
-            "p95": 81.1,
-            "p99": 81.1,
-            "max": 81.1,
-            "mean": 52.1
+            "p50": 50.6,
+            "p95": 75.5,
+            "p99": 75.5,
+            "max": 75.5,
+            "mean": 51.9
           }
         },
         "server": {
           "samples": 22,
-          "rssStartMb": 134.4,
-          "rssEndMb": 179.4,
-          "rssPeakMb": 179.6,
-          "heapEndMb": 24.6,
-          "eventLoopP99MaxMs": 377.2,
-          "eventLoopMaxMs": 377.2,
-          "heapSlopeMbPerMinSecondHalf": -10.37,
-          "heapAtQuarterMb": 36.8,
-          "dbMbAtEnd": 21.8,
+          "rssStartMb": 132.6,
+          "rssEndMb": 176.2,
+          "rssPeakMb": 176.2,
+          "heapEndMb": 32.2,
+          "eventLoopP99MaxMs": 359.4,
+          "eventLoopMaxMs": 359.4,
+          "heapSlopeMbPerMinSecondHalf": 37.18,
+          "heapAtQuarterMb": 38.6,
+          "dbMbAtEnd": 22.3,
           "walMbAtEnd": 8.3
         },
         "invariants": {
           "accounts": 4635,
-          "proposals": 74,
-          "decisions": 73,
-          "outbox": 73,
-          "connectorReceived": 64,
-          "auditEvents": 11428
+          "proposals": 63,
+          "decisions": 60,
+          "outbox": 60,
+          "connectorReceived": 55,
+          "auditEvents": 11452
         }
       },
       "checks": [
         {
           "name": "no 5xx or transport errors during the soak",
           "pass": true,
-          "detail": "{\"200\":6989,\"422\":55}"
+          "detail": "{\"200\":7093,\"422\":55}"
         },
         {
           "name": "heap does not grow without bound (end minus 25% mark < 150 MB)",
           "pass": true,
-          "detail": "36.8 -> 24.6 MB"
+          "detail": "38.6 -> 32.2 MB"
         },
         {
           "name": "safety invariants hold after the soak",
@@ -1200,7 +1200,7 @@
         {
           "name": "server healthy, no unhandled errors",
           "pass": true,
-          "detail": "health 200  in 1 ms; alive=true; estId\":\"042a770a-8682-4f2e-83dc-c4d0b4c13d97\",\"method\":\"POST\",\"route\":\"/api/actions/:id/review\",\"status\":200,\"durationMs\":2,\"principal\":\"u_rui\"}\n{\"ts\":\"2026-10-15T17:59:35.231Z\",\"level\":\"info\",\"event\":\"http_request\",\"service\":\"ar-resolve-api\",\"env\":\"synthetic\",\"requestId\":\"4931af9c-8355-4161-8403-987fbfc976ae\",\"method\":\"GET\",\"route\":\"/api/accounts\",\"status\":200,\"durationMs\":6,\"principal\":\"u_ana\"}\n"
+          "detail": "health 200  in 1 ms; alive=true; d\":\"3b1ea368-12ff-4515-ab08-e12c86f182d8\",\"method\":\"GET\",\"route\":\"/api/accounts/:id\",\"status\":200,\"durationMs\":1,\"principal\":\"u_ana\"}\n{\"ts\":\"2026-10-15T19:07:31.067Z\",\"level\":\"info\",\"event\":\"http_request\",\"service\":\"ar-resolve-api\",\"env\":\"synthetic\",\"requestId\":\"c3903e10-c9c4-4674-bd4b-10c90614f83c\",\"method\":\"POST\",\"route\":\"/api/actions/:id/review\",\"status\":200,\"durationMs\":2,\"principal\":\"u_rui\"}\n"
         }
       ],
       "notes": [],

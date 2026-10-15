@@ -1,0 +1,23 @@
+// Hosted synthetic demo of AR Resolve on Cloudflare Containers (ADR 0120).
+// Deploy from this folder: npm ci && npx wrangler secret put DEMO_PASSWORD && npx wrangler deploy
+{
+  "name": "ar-resolve-demo",
+  "main": "worker.ts",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+  "containers": [
+    {
+      "class_name": "ArResolveContainer",
+      "image": "../../Dockerfile",
+      "image_build_context": "../..",
+      "instance_type": "basic",
+      "max_instances": 1
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "AR_RESOLVE", "class_name": "ArResolveContainer" }]
+  },
+  "exports": {
+    "ArResolveContainer": { "type": "durable-object", "storage": "sqlite" }
+  }
+}

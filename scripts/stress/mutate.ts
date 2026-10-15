@@ -34,6 +34,9 @@ const M: Mutation[] = [
   { name: 'GET returns the secret instead of its last 4', file: CSF, from: "last4: v.secret && source === 'saved' ? row!.last4 || '' : null,", to: "last4: v.secret && source === 'saved' ? storedValues()[v.name] ?? '' : null,", test: 'synthetic without a sealing key', suite: CS },
   { name: 'audit row carries the values', file: CSF, from: 'details: { provider: p, changes: done } });', to: 'details: { provider: p, changes: done, values } });', test: '.', suite: CS },
   { name: 'any client supervisor edits deployment keys', file: 'server/http/routes/connector-settings.ts', from: 'if (!opts.deploymentAdmins.includes(s.userId)) {', to: 'if (false) {', test: 'AR_DEPLOYMENT_ADMINS may touch', suite: CS },
+  { name: 'demo gate open without a password', file: 'deploy/cloudflare/gate.ts', from: 'return !!demoPassword && demoPassword.length >= MIN_PASSWORD_LENGTH;', to: 'return true;', test: 'locks the demo', suite: 'tests/cloudflare-gate.test.ts' },
+  { name: 'demo gate ignores the cookie', file: 'deploy/cloudflare/gate.ts', from: 'if (got && await same(got, await gateToken(demoPassword))) return { ok: true };', to: 'if (got) return { ok: true };', test: 'anything else is 401', suite: 'tests/cloudflare-gate.test.ts' },
+  { name: 'demo gate accepts any password', file: 'deploy/cloudflare/gate.ts', from: 'if (await same(submitted, demoPassword)) return { ok: true };', to: 'return { ok: true };', test: 'anything else is 401', suite: 'tests/cloudflare-gate.test.ts' },
   { name: 'stored key not used by the adapter', file: 'server/connectors/live/config.ts', from: 'const stored = storedSource ? storedSource() : null;', to: 'const stored = null as Env | null;', test: 'used end to end', suite: CS },
 ];
 

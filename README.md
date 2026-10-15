@@ -18,7 +18,7 @@ Development with hot reload: `npm run dev` (API on 8080, UI on http://localhost:
 
 | Command | What it does |
 | --- | --- |
-| `npm test` | 205 tests in 25 suites over the real HTTP API (see below) |
+| `npm test` | 207 tests in 26 suites over the real HTTP API (see below) |
 | `npm run smoke:live -- <provider>` | Calls a vendor sandbox with documented test data only; refuses without keys or in production mode (`--mock` rehearses against a local mock) |
 | `npm run demo` | The Phase 0 acceptance journey end to end through the API, including a restart |
 | `npm run eval` | Regenerates `evaluation/REPORT.md`: DED01 40/40, all packs 141/141, selection 17/17, 3-client cohort 35/35 |
@@ -110,6 +110,20 @@ ADRs: [0001 architecture](docs/adr/0001-phase0-architecture.md), [0010 knowledge
 - A timeout produces `uncertain`. Only a connector read-back resolves it; nothing is resubmitted blindly.
 - Scenario selection uses one versioned map; the knowledge base derives its routing from it and can only be stricter.
 - A payer promise, an accepted request, an adjudication change and cash are separate ledger entries. Recovery is attributable only under an explicit, versioned draft rule.
+
+## Hosted demo on Cloudflare (ADR 0120)
+
+`deploy/cloudflare/` runs the synthetic app on Cloudflare Containers behind a password page. Needs the Workers Paid plan and Docker on the machine that deploys:
+
+```bash
+cd deploy/cloudflare
+npm ci
+npx wrangler login
+npx wrangler secret put DEMO_PASSWORD   # at least 12 characters
+npx wrangler deploy                     # first deploy can take several minutes to provision
+```
+
+The demo resets after 30 idle minutes (container disk is ephemeral). Use vendor sandbox/test keys only.
 
 ## Limitations
 

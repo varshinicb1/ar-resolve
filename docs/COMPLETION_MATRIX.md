@@ -230,6 +230,16 @@ Status values: **Implemented** (works and tested on synthetic data), **Mocked** 
 | CON06 | Production mode refused in synthetic; test refuses production; one test per provider per 10 s | Implemented (mutation-tested) | tests/connector-settings.test.ts |
 | CON07 | Real vendor sandbox test from the page | Blocked (no vendor keys in this environment; verified against the local mock only) | ADR 0110 |
 | CON08 | Only named deployment admins may change deployment-wide keys outside synthetic | Implemented (`AR_DEPLOYMENT_ADMINS` allowlist, fail closed when empty; no in-app management) | ADR 0110 "Costs"; tests/connector-settings.test.ts |
+
+## Hosted demo on Cloudflare (ADR 0120)
+
+| Area | Requirement | Status | Evidence |
+| --- | --- | --- | --- |
+| CFD01 | Synthetic app on Cloudflare Containers from the existing Dockerfile | Implemented (dry-run and local `wrangler dev` verified) | deploy/cloudflare/; ADR 0120 "Verification" |
+| CFD02 | Password page in the Worker; fails closed without DEMO_PASSWORD | Implemented (mutation-tested) | tests/cloudflare-gate.test.ts |
+| CFD03 | Deployed and reachable on a Cloudflare URL | Blocked (no Cloudflare token or network access here) | ADR 0120 "Blocked" |
+| CFD04 | Demo data survives container sleep | Not built (ephemeral disk by design; demo reseeds) | ADR 0120 "Costs" |
+
 ## Stress, load and resilience (ADR 0095, migration 095)
 
 | Area | Requirement | Status | Evidence |

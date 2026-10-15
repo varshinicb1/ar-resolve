@@ -5,3 +5,6 @@ web/dist/
 *.db-wal
 *.db-shm
 .env
+.wrangler/
+deploy/cloudflare/dist/
+.dev.vars
